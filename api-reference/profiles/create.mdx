@@ -1,0 +1,100 @@
+---
+title: 'Create profile'
+description: 'Create a new profile and optionally grant it full permissions across all modules.'
+---
+
+<Badge color="blue" shape="pill">POST</Badge> `/api/perfil`
+
+Creates a new profile record. If `bitAdministrador` is `true`, full permissions (`bitAgregar`, `bitEditar`, `bitConsulta`, `bitEliminar`, `bitDetalle`) are automatically created in the `permisos_perfil` table for every existing module.
+
+## Request body
+
+<ParamField body="strNombrePerfil" type="string" required>
+  Name of the new profile. Cannot be empty or whitespace-only.
+</ParamField>
+
+<ParamField body="bitAdministrador" type="boolean" default="false">
+  Whether this profile has administrator-level access. When `true`, full permissions are automatically granted for all existing modules.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the profile is created successfully.
+</ResponseField>
+
+<ResponseField name="data" type="object" required>
+  The newly created profile record as returned by the database.
+  <Expandable title="properties">
+    <ResponseField name="id" type="number">
+      Auto-generated primary key.
+    </ResponseField>
+    <ResponseField name="strNombrePerfil" type="string">
+      Profile name.
+    </ResponseField>
+    <ResponseField name="bitAdministrador" type="boolean">
+      Administrator flag.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Error responses
+
+| Status | Message | Cause |
+|--------|---------|-------|
+| `400` | `El nombre del perfil es obligatorio` | `strNombrePerfil` is missing or is an empty/whitespace string. |
+| `500` | `No se pudo obtener el perfil recién creado` | The `INSERT` statement succeeded but the `RETURNING` clause returned no rows. |
+| `500` | `Ocurrió un error interno al crear el perfil` | Any other unhandled database error. |
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request POST \
+  --url https://your-domain.com/api/perfil \
+  --header 'Content-Type: application/json' \
+  --cookie 'auth_token=<your-jwt>' \
+  --data '{
+    "strNombrePerfil": "Supervisor",
+    "bitAdministrador": false
+  }'
+```
+
+```typescript TypeScript
+const response = await fetch('/api/perfil', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({
+    strNombrePerfil: 'Supervisor',
+    bitAdministrador: false,
+  }),
+});
+
+const { success, data } = await response.json();
+```
+
+</CodeGroup>
+
+### Success response
+
+```json 200
+{
+  "success": true,
+  "data": {
+    "id": 4,
+    "strNombrePerfil": "Supervisor",
+    "bitAdministrador": false
+  }
+}
+```
+
+### Error response (400)
+
+```json 400
+{
+  "statusCode": 400,
+  "message": "El nombre del perfil es obligatorio"
+}
+```

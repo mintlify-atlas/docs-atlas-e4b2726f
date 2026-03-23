@@ -1,0 +1,111 @@
+---
+title: 'Update profile'
+description: 'Update an existing profile name and administrator flag.'
+---
+
+<Badge color="yellow" shape="pill">PUT</Badge> `/api/perfil/:id`
+
+Updates the `strNombrePerfil` and `bitAdministrador` fields of an existing profile. The endpoint also manages `permisos_perfil` records automatically based on the change in administrator status:
+
+- **Was not admin → now admin**: all existing permissions for this profile are deleted and replaced with full permissions for every existing module.
+- **Was admin → no longer admin**: all permissions for this profile are deleted, leaving the profile with no module access.
+- **No change to admin flag**: existing permissions are left unchanged.
+
+## Path parameters
+
+<ParamField path="id" type="number" required>
+  Primary key of the profile to update.
+</ParamField>
+
+## Request body
+
+<ParamField body="strNombrePerfil" type="string" required>
+  Updated profile name. Cannot be empty or whitespace-only.
+</ParamField>
+
+<ParamField body="bitAdministrador" type="boolean" required>
+  Updated administrator flag.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the update completes without error.
+</ResponseField>
+
+<ResponseField name="data" type="object" required>
+  The updated profile record as returned by the database.
+  <Expandable title="properties">
+    <ResponseField name="id" type="number">
+      Primary key.
+    </ResponseField>
+    <ResponseField name="strNombrePerfil" type="string">
+      Updated profile name.
+    </ResponseField>
+    <ResponseField name="bitAdministrador" type="boolean">
+      Updated administrator flag.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Error responses
+
+| Status | Message | Cause |
+|--------|---------|-------|
+| `400` | `ID de perfil inválido` | The `:id` path segment is missing or resolves to `0` or `NaN`. |
+| `400` | `El nombre es obligatorio` | `strNombrePerfil` is missing or is an empty/whitespace string. |
+| `404` | `Perfil no encontrado` | No record exists with the given `id`. |
+| `500` | `Ocurrió un error interno al actualizar el perfil` | Any other unhandled database error. |
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request PUT \
+  --url https://your-domain.com/api/perfil/4 \
+  --header 'Content-Type: application/json' \
+  --cookie 'auth_token=<your-jwt>' \
+  --data '{
+    "strNombrePerfil": "Supervisor Senior",
+    "bitAdministrador": false
+  }'
+```
+
+```typescript TypeScript
+const response = await fetch('/api/perfil/4', {
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({
+    strNombrePerfil: 'Supervisor Senior',
+    bitAdministrador: false,
+  }),
+});
+
+const { success, data } = await response.json();
+```
+
+</CodeGroup>
+
+### Success response
+
+```json 200
+{
+  "success": true,
+  "data": {
+    "id": 4,
+    "strNombrePerfil": "Supervisor Senior",
+    "bitAdministrador": false
+  }
+}
+```
+
+### Error response (404)
+
+```json 404
+{
+  "statusCode": 404,
+  "message": "Perfil no encontrado"
+}
+```

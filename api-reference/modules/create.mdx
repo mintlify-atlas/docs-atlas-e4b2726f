@@ -1,0 +1,89 @@
+---
+title: 'Create module'
+description: 'Create a new module.'
+---
+
+<Badge color="blue" shape="pill">POST</Badge> `/api/modulo`
+
+Creates a new module record. The value of `strNombreModulo` is automatically converted to uppercase before being stored.
+
+## Request body
+
+<ParamField body="strNombreModulo" type="string" required>
+  Name of the new module. Stored in uppercase regardless of the casing supplied.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the module is created successfully.
+</ResponseField>
+
+<ResponseField name="data" type="object" required>
+  The newly created module record as returned by the database.
+  <Expandable title="properties">
+    <ResponseField name="id" type="number">
+      Auto-generated primary key.
+    </ResponseField>
+    <ResponseField name="strNombreModulo" type="string">
+      Module name in uppercase.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Error responses
+
+| Status | Message | Cause |
+|--------|---------|-------|
+| `200` (with `success: false`) | `El nombre del módulo es obligatorio.` | `strNombreModulo` is missing or falsy in the request body. |
+| `200` (with `success: false`) | `No se pudo crear el módulo en la base de datos.` | Any unhandled database error during the insert. |
+
+<Note>
+  Validation and database errors for this endpoint return HTTP `200` with `success: false` in the body rather than a 4xx/5xx HTTP status code.
+</Note>
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request POST \
+  --url https://your-domain.com/api/modulo \
+  --header 'Content-Type: application/json' \
+  --cookie 'auth_token=<your-jwt>' \
+  --data '{"strNombreModulo": "ventas"}'
+```
+
+```typescript TypeScript
+const response = await fetch('/api/modulo', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({ strNombreModulo: 'ventas' }),
+});
+
+const { success, data } = await response.json();
+```
+
+</CodeGroup>
+
+### Success response
+
+```json 200
+{
+  "success": true,
+  "data": {
+    "id": 6,
+    "strNombreModulo": "VENTAS"
+  }
+}
+```
+
+### Error response (missing name)
+
+```json 200
+{
+  "success": false,
+  "message": "El nombre del módulo es obligatorio."
+}
+```

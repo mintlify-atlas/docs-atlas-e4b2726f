@@ -1,0 +1,145 @@
+---
+title: 'My permissions'
+description: 'Return the full RBAC permission map for a profile, keyed by module name. Called at login time to load access rights into memory.'
+---
+
+<Badge color="green" shape="pill">GET</Badge> `/api/permisos/mis-permisos/:idPerfil`
+
+Joins `permisos_perfil` with `modulo` and returns a `Record<string, PermisosAccion>` indexed by the **uppercased module name**. This is the key endpoint for RBAC enforcement in the frontend.
+
+`useAuth.ts` calls this endpoint inside `cargarMisPermisos()` immediately after a successful login and again when the session is restored on page refresh. The result is stored in the global `misPermisos` state and later checked via `tienePermiso(nombreModulo, accion)`.
+
+## Path parameters
+
+<ParamField path="idPerfil" type="number" required>
+  ID of the profile whose permission map you want to load.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the query completes without error.
+</ResponseField>
+
+<ResponseField name="permisos" type="object" required>
+  A plain object whose keys are **uppercase module names** (e.g. `"USUARIO"`, `"PERFIL"`) and whose values are `PermisosAccion` objects. Returns an empty object `{}` when the profile has no assigned permissions.
+  <Expandable title="PermisosAccion properties">
+    <ResponseField name="bitConsulta" type="boolean">
+      Read/list access.
+    </ResponseField>
+    <ResponseField name="bitAgregar" type="boolean">
+      Create access.
+    </ResponseField>
+    <ResponseField name="bitEditar" type="boolean">
+      Edit access.
+    </ResponseField>
+    <ResponseField name="bitEliminar" type="boolean">
+      Delete access.
+    </ResponseField>
+    <ResponseField name="bitDetalle" type="boolean">
+      Detail-view access.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## `PermisosAccion` interface
+
+Defined in `app/composables/useAuth.ts`:
+
+```typescript
+export interface PermisosAccion {
+  bitConsulta: boolean;
+  bitAgregar: boolean;
+  bitEditar: boolean;
+  bitEliminar: boolean;
+  bitDetalle: boolean;
+}
+```
+
+The global permissions state is typed as `Record<string, PermisosAccion>` and accessed via `tienePermiso(nombreModulo, accion)`, which looks up the module name in uppercase and returns `false` if the key does not exist:
+
+```typescript
+const tienePermiso = (nombreModulo: string, accion: keyof PermisosAccion) => {
+  const modulo = misPermisos.value[nombreModulo.toUpperCase()]
+  return modulo ? modulo[accion] : false
+}
+```
+
+## Error response
+
+```json 500
+{
+  "statusCode": 500,
+  "message": "Error al cargar los permisos del usuario"
+}
+```
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request GET \
+  --url 'https://your-domain.com/api/permisos/mis-permisos/2' \
+  --cookie 'auth_token=<your-jwt>'
+```
+
+```typescript TypeScript
+// Called automatically by useAuth at login time
+const cargarMisPermisos = async (idPerfil: number) => {
+  const response = await fetch(`/api/permisos/mis-permisos/${idPerfil}`);
+  const data = await response.json();
+  if (data.success) {
+    misPermisos.value = data.permisos; // Record<string, PermisosAccion>
+  }
+};
+
+// Manual call
+const response = await fetch('/api/permisos/mis-permisos/2', {
+  credentials: 'include',
+});
+
+const { success, permisos } = await response.json();
+```
+
+</CodeGroup>
+
+### Success response
+
+The response key `permisos` is a plain object — not an array. Each key is the module name in uppercase exactly as stored in the `modulo` table.
+
+```json 200
+{
+  "success": true,
+  "permisos": {
+    "USUARIO": {
+      "nombreModulo": "Usuario",
+      "bitAgregar": false,
+      "bitEditar": true,
+      "bitConsulta": true,
+      "bitEliminar": false,
+      "bitDetalle": true
+    },
+    "PERFIL": {
+      "nombreModulo": "Perfil",
+      "bitAgregar": false,
+      "bitEditar": false,
+      "bitConsulta": true,
+      "bitEliminar": false,
+      "bitDetalle": false
+    },
+    "MODULO": {
+      "nombreModulo": "Modulo",
+      "bitAgregar": false,
+      "bitEditar": false,
+      "bitConsulta": true,
+      "bitEliminar": false,
+      "bitDetalle": false
+    }
+  }
+}
+```
+
+<Note>
+  Each value object includes `nombreModulo` because the server selects it from the `modulo` join alongside the permission flags. Only the boolean flag fields are used by `tienePermiso()`; `nombreModulo` is informational.
+</Note>

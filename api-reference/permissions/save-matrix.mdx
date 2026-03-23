@@ -1,0 +1,179 @@
+---
+title: 'Save permissions matrix'
+description: 'Replace the complete permissions matrix for a profile in a single atomic batch operation.'
+---
+
+<Badge color="blue" shape="pill">POST</Badge> `/api/permisos/guardar-matriz`
+
+Replaces all permission records for a given profile atomically:
+
+1. **Deletes** every existing `permisos_perfil` row where `idPerfil` matches.
+2. **Inserts** the new set of rows supplied in the `permisos` array.
+
+This is what the admin UI calls when a user clicks **Guardar Permisos** after editing the permissions matrix. Sending an empty `permisos` array effectively removes all permissions for the profile.
+
+## Request body
+
+<ParamField body="idPerfil" type="number" required>
+  ID of the profile whose permissions matrix will be replaced. The handler deletes all existing rows for this profile before inserting the new ones.
+</ParamField>
+
+<ParamField body="permisos" type="object[]">
+  Array of permission entries to insert. If omitted or empty, all existing permissions for the profile are deleted and nothing is inserted.
+  <Expandable title="permission entry properties">
+    <ParamField body="idModulo" type="number" required>
+      ID of the module this permission entry covers.
+    </ParamField>
+    <ParamField body="bitAgregar" type="boolean">
+      Grant create access. Falsy values are stored as `false`.
+    </ParamField>
+    <ParamField body="bitEditar" type="boolean">
+      Grant edit access. Falsy values are stored as `false`.
+    </ParamField>
+    <ParamField body="bitConsulta" type="boolean">
+      Grant read/list access. Falsy values are stored as `false`.
+    </ParamField>
+    <ParamField body="bitEliminar" type="boolean">
+      Grant delete access. Falsy values are stored as `false`.
+    </ParamField>
+    <ParamField body="bitDetalle" type="boolean">
+      Grant detail-view access. Falsy values are stored as `false`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the delete-and-insert cycle completes without error.
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  Always `"Matriz actualizada correctamente"` on success.
+</ResponseField>
+
+## Error responses
+
+| Status | Message | Cause |
+|--------|---------|-------|
+| `400` | `ID de perfil requerido` | `idPerfil` is missing or coerces to `0`/`NaN`. |
+| `500` | `Error al guardar en base de datos` | Any unhandled database error during the delete or insert. |
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request POST \
+  --url https://your-domain.com/api/permisos/guardar-matriz \
+  --header 'Content-Type: application/json' \
+  --cookie 'auth_token=<your-jwt>' \
+  --data '{
+    "idPerfil": 2,
+    "permisos": [
+      {
+        "idModulo": 1,
+        "bitAgregar": false,
+        "bitEditar": true,
+        "bitConsulta": true,
+        "bitEliminar": false,
+        "bitDetalle": true
+      },
+      {
+        "idModulo": 2,
+        "bitAgregar": false,
+        "bitEditar": false,
+        "bitConsulta": true,
+        "bitEliminar": false,
+        "bitDetalle": false
+      },
+      {
+        "idModulo": 3,
+        "bitAgregar": true,
+        "bitEditar": true,
+        "bitConsulta": true,
+        "bitEliminar": true,
+        "bitDetalle": true
+      }
+    ]
+  }'
+```
+
+```typescript TypeScript
+interface PermisosMatrizEntry {
+  idModulo: number;
+  bitAgregar: boolean;
+  bitEditar: boolean;
+  bitConsulta: boolean;
+  bitEliminar: boolean;
+  bitDetalle: boolean;
+}
+
+const idPerfil = 2;
+const permisos: PermisosMatrizEntry[] = [
+  {
+    idModulo: 1,
+    bitAgregar: false,
+    bitEditar: true,
+    bitConsulta: true,
+    bitEliminar: false,
+    bitDetalle: true,
+  },
+  {
+    idModulo: 2,
+    bitAgregar: false,
+    bitEditar: false,
+    bitConsulta: true,
+    bitEliminar: false,
+    bitDetalle: false,
+  },
+  {
+    idModulo: 3,
+    bitAgregar: true,
+    bitEditar: true,
+    bitConsulta: true,
+    bitEliminar: true,
+    bitDetalle: true,
+  },
+];
+
+const response = await fetch('/api/permisos/guardar-matriz', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({ idPerfil, permisos }),
+});
+
+const { success, message } = await response.json();
+```
+
+</CodeGroup>
+
+### Success response
+
+```json 200
+{
+  "success": true,
+  "message": "Matriz actualizada correctamente"
+}
+```
+
+### Error response (400)
+
+```json 400
+{
+  "statusCode": 400,
+  "message": "ID de perfil requerido"
+}
+```
+
+### Clearing all permissions
+
+To remove every permission for a profile without assigning new ones, send an empty array or omit the `permisos` field entirely:
+
+```json
+{
+  "idPerfil": 2,
+  "permisos": []
+}
+```

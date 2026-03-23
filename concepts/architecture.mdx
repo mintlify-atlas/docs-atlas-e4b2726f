@@ -1,0 +1,176 @@
+---
+title: "Architecture"
+description: "Full-stack architecture of Nuxt Secure — how the frontend, API layer, and database fit together."
+---
+
+Nuxt Secure is a **universal Nuxt.js 4 application**. The same codebase renders pages on both the server and the client. The Vue 3 frontend communicates exclusively with Nitro API routes running in the same process — there is no separate backend service.
+
+## Directory structure
+
+| Directory / file | Purpose |
+|---|---|
+| `app/` | Vue 3 frontend — pages, layouts, components, composables, middleware |
+| `app/middleware/` | Route guards that run before every navigation |
+| `app/composables/` | Shared reactive logic (`useAuth`, `usePermisos`, etc.) |
+| `server/` | Nitro server — API route handlers |
+| `server/api/` | REST-style endpoint files (`.get.ts`, `.post.ts`, etc.) |
+| `server/database/` | Drizzle ORM client and table schema |
+| `nuxt.config.ts` | Framework and module configuration |
+
+## Data flow
+
+Every request moves through this chain:
+
+```
+1. Browser
+   └─ 2. auth.global.ts middleware (route guard)
+         └─ 3. Vue 3 page / component
+               └─ 4. fetch() → Nitro API route (server/api/)
+                     └─ 5. Drizzle ORM query
+                           └─ 6. Neon PostgreSQL (serverless)
+```
+
+<Note>
+The middleware runs on both the server (SSR) and the client (SPA navigation). `useCookie` is used instead of `localStorage` so token validation works in both environments.
+</Note>
+
+## Key files
+
+| File | Description |
+|---|---|
+| `app/middleware/auth.global.ts` | Global route guard — redirects unauthenticated users to `/login` |
+| `app/composables/useAuth.ts` | Auth state management — login flow, session restore, permission checks |
+| `server/api/` | All API route handlers (Nitro file-based routing) |
+| `server/database/schema.ts` | Drizzle ORM table definitions for all five tables |
+| `nuxt.config.ts` | Nuxt modules, runtime config keys, Turnstile site key |
+
+### `nuxt.config.ts`
+
+```typescript nuxt.config.ts
+export default defineNuxtConfig({
+  compatibilityDate: '2025-07-15',
+  devtools: { enabled: true },
+  modules: ['@nuxtjs/tailwindcss', '@nuxtjs/turnstile'],
+
+  nitro: {
+    experimental: {
+      openAPI: true
+    }
+  },
+
+  turnstile: {
+    siteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY,
+  },
+
+  runtimeConfig: {
+    jwtSecret: process.env.JWT_SECRET,
+    cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
+    cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
+    turnstile: {
+      secretKey: process.env.TURNSTILE_SECRET_KEY,
+    },
+    public: {
+      turnstileSiteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY
+    }
+  }
+})
+```
+
+## Database schema
+
+Drizzle ORM manages five tables in a Neon PostgreSQL database. The relationships are: a `usuario` belongs to one `perfil`; a `permisos_perfil` row ties a `perfil` to a `modulo` with five boolean action flags; a `menu` row ties a menu item to a `modulo`.
+
+### `perfil` — user profiles / roles
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | serial PK | Auto-increment primary key |
+| `strNombrePerfil` | varchar(255) | Profile display name |
+| `bitAdministrador` | boolean | Whether this profile has administrator privileges |
+
+### `usuario` — application users
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | serial PK | Auto-increment primary key |
+| `strNombreUsuario` | varchar(255) | Username used to log in |
+| `idPerfil` | integer FK | Reference to `perfil.id` |
+| `strPwd` | varchar(255) | bcrypt-hashed password |
+| `idEstadoUsuario` | boolean | `true` = active, `false` = inactive |
+| `strCorreo` | varchar(255) unique | Email address |
+| `strNumeroCelular` | varchar(20) | Optional mobile number |
+| `imagenUrl` | varchar(500) | Optional Cloudinary avatar URL |
+
+### `modulo` — application modules
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | serial PK | Auto-increment primary key |
+| `strNombreModulo` | varchar(255) | Module name (used as the RBAC key) |
+
+### `permisos_perfil` — permissions per profile per module
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | serial PK | Auto-increment primary key |
+| `idModulo` | integer FK | Reference to `modulo.id` |
+| `idPerfil` | integer FK | Reference to `perfil.id` |
+| `bitAgregar` | boolean | Permission to create records |
+| `bitEditar` | boolean | Permission to edit records |
+| `bitConsulta` | boolean | Permission to view/list records |
+| `bitEliminar` | boolean | Permission to delete records |
+| `bitDetalle` | boolean | Permission to view detail view |
+
+### `menu` — navigation menu entries
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | serial PK | Auto-increment primary key |
+| `idMenu` | integer | Menu item identifier |
+| `idModulo` | integer FK | Reference to `modulo.id` |
+
+## Full schema source
+
+```typescript server/database/schema.ts
+import { pgTable, serial, varchar, boolean, integer } from 'drizzle-orm/pg-core';
+
+export const perfil = pgTable('perfil', {
+  id: serial('id').primaryKey(),
+  strNombrePerfil: varchar('strNombrePerfil', { length: 255 }).notNull(),
+  bitAdministrador: boolean('bitAdministrador').notNull(),
+});
+
+export const usuario = pgTable('usuario', {
+  id: serial('id').primaryKey(),
+  strNombreUsuario: varchar('strNombreUsuario', { length: 255 }).notNull(),
+  idPerfil: integer('idPerfil').references(() => perfil.id).notNull(),
+  strPwd: varchar('strPwd', { length: 255 }).notNull(),
+  idEstadoUsuario: boolean('idEstadoUsuario').default(true).notNull(),
+  strCorreo: varchar('strCorreo', { length: 255 }).notNull().unique(),
+  strNumeroCelular: varchar('strNumeroCelular', { length: 20 }),
+  imagenUrl: varchar('imagenUrl', { length: 500 }),
+});
+
+export const modulo = pgTable('modulo', {
+  id: serial('id').primaryKey(),
+  strNombreModulo: varchar('strNombreModulo', { length: 255 }).notNull(),
+});
+
+export const permisosPerfil = pgTable('permisos_perfil', {
+  id: serial('id').primaryKey(),
+  idModulo: integer('idModulo').references(() => modulo.id).notNull(),
+  idPerfil: integer('idPerfil').references(() => perfil.id).notNull(),
+  bitAgregar: boolean('bitAgregar').default(false).notNull(),
+  bitEditar: boolean('bitEditar').default(false).notNull(),
+  bitConsulta: boolean('bitConsulta').default(false).notNull(),
+  bitEliminar: boolean('bitEliminar').default(false).notNull(),
+  bitDetalle: boolean('bitDetalle').default(false).notNull(),
+});
+
+export const menu = pgTable('menu', {
+  id: serial('id').primaryKey(),
+  idMenu: integer('idMenu').notNull(),
+  idModulo: integer('idModulo').references(() => modulo.id).notNull(),
+});
+```

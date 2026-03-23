@@ -1,0 +1,71 @@
+---
+title: "Cloudinary configuration"
+description: "Setting up Cloudinary for user profile photo uploads."
+---
+
+Nuxt Secure uses [Cloudinary](https://cloudinary.com) to store and serve user profile photos. The photo URL is saved in the `imagenUrl` field of the `usuario` table.
+
+<Note>
+  Cloudinary is optional. If it is not configured, profile photo uploads will be unavailable, but all other features will continue to work.
+</Note>
+
+## Setup
+
+<Steps>
+  <Step title="Create a Cloudinary account">
+    Go to [cloudinary.com](https://cloudinary.com) and sign up for a free account.
+  </Step>
+
+  <Step title="Find your credentials">
+    In the Cloudinary dashboard, go to **Settings** > **API Keys**. You will find your **Cloud Name**, **API Key**, and **API Secret** there.
+  </Step>
+
+  <Step title="Add credentials to your .env file">
+    ```ini .env
+    CLOUDINARY_CLOUD_NAME=your-cloud-name
+    CLOUDINARY_API_KEY=your-api-key
+    CLOUDINARY_API_SECRET=your-api-secret
+    ```
+  </Step>
+</Steps>
+
+## How it works in the app
+
+Profile photo uploads follow this flow:
+
+1. The user selects an image in the browser.
+2. [compressorjs](https://fengyuanchen.github.io/compressorjs/) (`^1.2.1`) compresses the image client-side before upload.
+3. The compressed image is sent to a server API route.
+4. The server uses the [cloudinary](https://www.npmjs.com/package/cloudinary) package (`^2.9.0`) to upload the image to Cloudinary.
+5. Cloudinary returns a URL for the uploaded image.
+6. The URL is saved to `usuario.imagenUrl` in the database.
+
+## Security
+
+All three Cloudinary credentials (`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`) are mapped into Nuxt's server-side `runtimeConfig` and are never exposed to the browser:
+
+```typescript nuxt.config.ts
+runtimeConfig: {
+  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
+  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
+  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
+}
+```
+
+Access them in server routes via `useRuntimeConfig()`:
+
+```typescript server/api/upload.post.ts
+const config = useRuntimeConfig()
+
+const cloudinaryClient = new Cloudinary({
+  cloud: {
+    cloudName: config.cloudinaryCloudName,
+    apiKey: config.cloudinaryApiKey,
+    apiSecret: config.cloudinaryApiSecret,
+  },
+})
+```
+
+<Warning>
+  Never place Cloudinary credentials in the `public` block of `runtimeConfig`. Doing so would expose your API secret to anyone who visits the site.
+</Warning>

@@ -1,0 +1,75 @@
+---
+title: 'Delete profile'
+description: 'Permanently delete a profile and its associated permissions.'
+---
+
+<Badge color="red" shape="pill">DELETE</Badge> `/api/perfil/:id`
+
+Permanently removes a profile and all its associated `permisos_perfil` records. Before deleting, the endpoint checks whether any users are assigned to this profile. If any users are found, the operation is rejected with a `409 Conflict` error.
+
+<Warning>
+  This operation is irreversible. The profile record and all its permissions are permanently removed.
+</Warning>
+
+## Path parameters
+
+<ParamField path="id" type="number" required>
+  Primary key of the profile to delete.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the profile and its permissions are deleted successfully.
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  Confirmation string. Always `"Perfil eliminado correctamente"` on success.
+</ResponseField>
+
+## Error responses
+
+| Status | Message | Cause |
+|--------|---------|-------|
+| `400` | `ID de perfil inválido` | The `:id` path segment is missing or resolves to `0` or `NaN`. |
+| `409` | `No puedes eliminar este perfil porque hay usuarios que lo están utilizando.` | One or more users in the `usuario` table have `idPerfil` set to this profile's `id`. Reassign or delete those users first. |
+| `500` | `Ocurrió un error interno al eliminar` | Any other unhandled database error. |
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request DELETE \
+  --url https://your-domain.com/api/perfil/4 \
+  --cookie 'auth_token=<your-jwt>'
+```
+
+```typescript TypeScript
+const response = await fetch('/api/perfil/4', {
+  method: 'DELETE',
+  credentials: 'include',
+});
+
+const { success, message } = await response.json();
+```
+
+</CodeGroup>
+
+### Success response
+
+```json 200
+{
+  "success": true,
+  "message": "Perfil eliminado correctamente"
+}
+```
+
+### Error response (409)
+
+```json 409
+{
+  "statusCode": 409,
+  "message": "No puedes eliminar este perfil porque hay usuarios que lo están utilizando."
+}
+```

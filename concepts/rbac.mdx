@@ -1,0 +1,148 @@
+---
+title: "Role-based access control"
+description: "How permissions are evaluated at runtime using profiles and modules in Nuxt Secure."
+---
+
+Nuxt Secure uses a **profile-based RBAC model**. Every user belongs to exactly one profile. Each profile holds a set of permissions, one row per application module. Each permission row defines five independent boolean action flags.
+
+This means access is controlled at two levels: **which module** and **which action** within that module.
+
+## The five permission actions
+
+The `PermisosAccion` interface in `useAuth.ts` defines the five actions that can be granted or denied per module:
+
+| Action flag | Description |
+|---|---|
+| `bitConsulta` | View / list records |
+| `bitAgregar` | Create new records |
+| `bitEditar` | Edit existing records |
+| `bitEliminar` | Delete records |
+| `bitDetalle` | Open the detail view of a record |
+
+All flags default to `false` in the database. A flag must be explicitly set to `true` for the action to be permitted.
+
+## Data model
+
+The `permisos_perfil` table stores one row per profile-module combination:
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | serial PK | Auto-increment primary key |
+| `idModulo` | integer FK | References `modulo.id` |
+| `idPerfil` | integer FK | References `perfil.id` |
+| `bitAgregar` | boolean | Create permission (default `false`) |
+| `bitEditar` | boolean | Edit permission (default `false`) |
+| `bitConsulta` | boolean | View permission (default `false`) |
+| `bitEliminar` | boolean | Delete permission (default `false`) |
+| `bitDetalle` | boolean | Detail permission (default `false`) |
+
+## Permission loading
+
+After a successful login, `cargarMisPermisos(idPerfil)` fetches the current user's permission set from the server:
+
+```typescript app/composables/useAuth.ts
+const cargarMisPermisos = async (idPerfil: number) => {
+  try {
+    const response = await fetch(`/api/permisos/mis-permisos/${idPerfil}`)
+    const data = await response.json()
+    if (data.success) {
+      misPermisos.value = data.permisos
+    }
+  } catch (error) {
+    console.error("Error cargando la matriz de permisos:", error)
+  }
+}
+```
+
+The API endpoint returns a `Record<string, PermisosAccion>` where each key is the module name in **uppercase** (e.g. `"USUARIO"`, `"PERMISOS-PERFIL"`). This object is stored in `useState('misPermisos')` and is available reactively across the entire app.
+
+`restaurarSesion()` calls `cargarMisPermisos` again after a hard refresh if the in-memory state is empty, so permissions survive F5.
+
+## Checking permissions at runtime
+
+`tienePermiso()` is the single function used everywhere in the UI to check whether the current user can perform an action:
+
+```typescript app/composables/useAuth.ts
+const tienePermiso = (nombreModulo: string, accion: keyof PermisosAccion) => {
+  const modulo = misPermisos.value[nombreModulo.toUpperCase()]
+  return modulo ? modulo[accion] : false
+}
+```
+
+If the module key is not present in `misPermisos` (because no permission row exists for this profile-module pair), the function returns `false` — deny by default.
+
+## Usage in pages
+
+Use `tienePermiso` with `v-if` to conditionally render UI elements based on the current user's permissions:
+
+```vue app/pages/seguridad/usuario.vue
+<script setup>
+const { tienePermiso, restaurarSesion } = useAuth()
+const router = useRouter()
+
+onMounted(async () => {
+  await restaurarSesion()
+
+  // Redirect users without view permission
+  if (!tienePermiso('USUARIO', 'bitConsulta')) {
+    router.replace('/')
+  }
+})
+</script>
+
+<template>
+  <!-- Show the data table only if the user can view records -->
+  <DataTable v-if="tienePermiso('USUARIO', 'bitConsulta')" />
+
+  <!-- Show the create button only if the user can add records -->
+  <button v-if="tienePermiso('USUARIO', 'bitAgregar')">
+    New user
+  </button>
+
+  <!-- Show edit controls only if the user can edit -->
+  <button v-if="tienePermiso('USUARIO', 'bitEditar')">
+    Edit
+  </button>
+
+  <!-- Show delete controls only if the user can delete -->
+  <button v-if="tienePermiso('USUARIO', 'bitEliminar')">
+    Delete
+  </button>
+</template>
+```
+
+## Route protection
+
+Each security page checks `bitConsulta` in its `onMounted` hook. If the user lacks view permission, they are redirected to `/` before the page renders:
+
+```typescript
+onMounted(async () => {
+  await restaurarSesion()
+  if (!tienePermiso('USUARIO', 'bitConsulta')) {
+    router.replace('/')
+  }
+})
+```
+
+<Note>
+This check is client-side only. API routes have their own server-side validation and return HTTP 401/403 for unauthorised requests regardless of the UI state.
+</Note>
+
+## Permissions matrix
+
+Administrators configure permissions through the visual permissions matrix UI. Selecting a profile loads all modules as rows, each with five toggleable checkboxes. Saving posts the entire matrix to `/api/permisos/guardar-matriz` in a single request.
+
+If the profile being edited belongs to the currently logged-in user, `cargarMisPermisos` is called immediately after saving so the session reflects the changes without a logout.
+
+See [Permissions matrix](/features/permissions-matrix) for the full walkthrough.
+
+## Example permissions layout
+
+| Module | bitConsulta | bitAgregar | bitEditar | bitEliminar | bitDetalle |
+|---|---|---|---|---|---|
+| USUARIO | ✓ | ✓ | ✓ | ✗ | ✓ |
+| PERMISOS-PERFIL | ✓ | ✗ | ✓ | ✗ | ✗ |
+
+<Tip>
+Module names in `tienePermiso()` are compared in uppercase, so `tienePermiso('usuario', 'bitConsulta')` and `tienePermiso('USUARIO', 'bitConsulta')` are equivalent.
+</Tip>

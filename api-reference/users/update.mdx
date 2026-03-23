@@ -1,0 +1,147 @@
+---
+title: 'Update user'
+description: "Update an existing user's information."
+---
+
+<Badge color="yellow" shape="pill">PUT</Badge> `/api/usuario/:id`
+
+Updates the fields of an existing user. All body fields overwrite their corresponding database columns — include every field you want to retain, not only the ones that changed. If a new Base64 image is supplied it is uploaded to Cloudinary; otherwise the existing `imagenUrl` is left unchanged. A non-empty `strPwd` value is re-hashed with bcrypt before being stored.
+
+## Path parameters
+
+<ParamField path="id" type="number" required>
+  Primary key of the user to update.
+</ParamField>
+
+## Request body
+
+<ParamField body="strNombreUsuario" type="string" required>
+  Updated username.
+</ParamField>
+
+<ParamField body="idPerfil" type="number" required>
+  Updated profile (role) ID.
+</ParamField>
+
+<ParamField body="strCorreo" type="string" required>
+  Updated email address.
+</ParamField>
+
+<ParamField body="strNumeroCelular" type="string">
+  Updated phone number.
+</ParamField>
+
+<ParamField body="idEstadoUsuario" type="boolean" required>
+  Updated active status. `true` = active, `false` = inactive.
+</ParamField>
+
+<ParamField body="strPwd" type="string">
+  New plain-text password. If this field is present and non-empty, it is hashed with bcrypt (10 rounds) and replaces the stored hash. Omit or send an empty string to leave the password unchanged.
+</ParamField>
+
+<ParamField body="imagenBase64" type="string">
+  Base64-encoded replacement image (must start with `data:image`). When provided, a new image is uploaded to the `usuarios_corp` Cloudinary folder and `imagenUrl` is updated to the new secure URL. If omitted, the existing `imagenUrl` is not modified.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the update completes without error.
+</ResponseField>
+
+<ResponseField name="data" type="object" required>
+  The updated user record as returned by the database.
+  <Expandable title="properties">
+    <ResponseField name="id" type="number">
+      Primary key.
+    </ResponseField>
+    <ResponseField name="strNombreUsuario" type="string">
+      Username.
+    </ResponseField>
+    <ResponseField name="idPerfil" type="number">
+      Profile ID.
+    </ResponseField>
+    <ResponseField name="strPwd" type="string">
+      Bcrypt hash of the current password.
+    </ResponseField>
+    <ResponseField name="strCorreo" type="string">
+      Email address.
+    </ResponseField>
+    <ResponseField name="strNumeroCelular" type="string | null">
+      Phone number.
+    </ResponseField>
+    <ResponseField name="idEstadoUsuario" type="boolean">
+      Active status.
+    </ResponseField>
+    <ResponseField name="imagenUrl" type="string | null">
+      Cloudinary URL of the profile image.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Error responses
+
+| Status | Message | Cause |
+|--------|---------|-------|
+| `500` | `Error al actualizar: la imagen es demasiado grande o el servidor tardó demasiado.` | Cloudinary upload failed, the image payload is too large, or the request timed out. |
+
+<Note>
+  The handler does not return a `404` if the `id` does not match any record — it will return `success: true` with `data` set to `undefined`. Validate the response `data` field on the client if you need to confirm the record existed.
+</Note>
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request PUT \
+  --url https://your-domain.com/api/usuario/12 \
+  --header 'Content-Type: application/json' \
+  --cookie 'auth_token=<your-jwt>' \
+  --data '{
+    "strNombreUsuario": "jdoe",
+    "idPerfil": 2,
+    "strCorreo": "jdoe-updated@example.com",
+    "strNumeroCelular": "555-0000",
+    "idEstadoUsuario": true
+  }'
+```
+
+```typescript TypeScript
+const response = await fetch('/api/usuario/12', {
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({
+    strNombreUsuario: 'jdoe',
+    idPerfil: 2,
+    strCorreo: 'jdoe-updated@example.com',
+    strNumeroCelular: '555-0000',
+    idEstadoUsuario: true,
+    // strPwd: 'newPassword', // include only if changing the password
+    // imagenBase64: 'data:image/png;base64,...', // include only if uploading a new image
+  }),
+});
+
+const { success, data } = await response.json();
+```
+
+</CodeGroup>
+
+### Success response
+
+```json 200
+{
+  "success": true,
+  "data": {
+    "id": 12,
+    "strNombreUsuario": "jdoe",
+    "idPerfil": 2,
+    "strPwd": "$2b$10$...",
+    "strCorreo": "jdoe-updated@example.com",
+    "strNumeroCelular": "555-0000",
+    "idEstadoUsuario": true,
+    "imagenUrl": "https://res.cloudinary.com/demo/image/upload/usuarios_corp/sample.jpg"
+  }
+}
+```

@@ -1,0 +1,92 @@
+---
+title: "Profile management"
+description: Define roles and assign them to users in Nuxt Secure.
+---
+
+Profiles (roles) are the cornerstone of Nuxt Secure's access model. Every user is assigned exactly one profile, and that profile determines which modules the user can access and what actions they can perform within each module.
+
+## Overview
+
+The **Módulo de Perfiles** page lists all profiles registered in the system. From here you can create new profiles, edit existing ones, view their details, and delete them.
+
+Access requires the `bitConsulta` permission on the `PERFIL` module. Without it, the application redirects you to `/` before the page renders.
+
+## Filtering profiles
+
+Two filters are available:
+
+| Filter | Description |
+|---|---|
+| **Search by name** | Case-insensitive partial match on `strNombrePerfil` |
+| **Profile type** | Filter by administrator flag: all, administrators only, or standard users only |
+
+Filters apply automatically with a 400 ms debounce. Click **Limpiar** to reset.
+
+## The administrator flag
+
+Each profile has a `bitAdministrador` boolean. This flag is informational — it is displayed as a badge in the table ("Sí" / "No") but does not automatically grant any specific permissions. Permissions are always controlled explicitly through the [permissions matrix](/features/permissions-matrix).
+
+## Creating a profile
+
+Click **Nuevo Perfil** to open the creation form. This button requires both `bitConsulta` and `bitAgregar` on the `PERFIL` module.
+
+<Steps>
+  <Step title="Enter a profile name">
+    Provide a descriptive name in `strNombrePerfil` (e.g., "Administrador", "Ventas", "Solo Lectura"). This field is required — the form will not submit if it is blank.
+  </Step>
+  <Step title="Set the administrator flag">
+    Check **Administrador** if this profile represents a system administrator role. This is optional and defaults to unchecked.
+  </Step>
+  <Step title="Save the profile">
+    Click **Guardar Registro**. The new profile is immediately available for assignment to users and in the permissions matrix.
+  </Step>
+</Steps>
+
+## Editing a profile
+
+Click the edit icon on any row to update the profile name or administrator flag. This requires `bitEditar` on the `PERFIL` module. Changes take effect immediately and are reflected in the user directory.
+
+## Deleting a profile
+
+Click the delete icon on any row and confirm the dialog. This requires `bitEliminar` on the `PERFIL` module.
+
+<Warning>
+  Deleting a profile that is currently assigned to one or more users will orphan those users — they will retain their `idPerfil` reference but the profile row will no longer exist, which can cause unexpected behaviour at login time. Ensure no users are assigned to the profile before deleting it, or reassign them first via the [user management](/features/user-management) page.
+</Warning>
+
+## Assigning profiles to users
+
+A profile is assigned to a user through the **Assigned profile** dropdown on the user creation or edit form in [User management](/features/user-management). A user can only have one profile at a time.
+
+## Permission gates
+
+Actions on the profiles page are gated by the `PERFIL` module:
+
+| Permission flag | Controls |
+|---|---|
+| `bitConsulta` | View the profiles table and access the page |
+| `bitAgregar` | Show the **Nuevo Perfil** button |
+| `bitEditar` | Show the edit button per row |
+| `bitEliminar` | Show the delete button per row |
+| `bitDetalle` | Show the detail view button per row |
+
+## Profile data model
+
+The `perfil` table is defined in `server/database/schema.ts`:
+
+| Column | Type | Required | Description |
+|---|---|---|---|
+| `id` | serial PK | Yes | Auto-increment primary key |
+| `strNombrePerfil` | varchar(255) | Yes | Human-readable profile name |
+| `bitAdministrador` | boolean | Yes | Whether this is an administrator profile |
+
+## Related pages
+
+<Columns cols={2}>
+  <Card title="User management" icon="users" href="/features/user-management">
+    Assign profiles to individual users.
+  </Card>
+  <Card title="Permissions matrix" icon="table" href="/features/permissions-matrix">
+    Configure the module permissions granted to each profile.
+  </Card>
+</Columns>

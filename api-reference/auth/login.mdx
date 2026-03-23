@@ -1,0 +1,117 @@
+---
+title: 'Login'
+description: 'Authenticate a user and receive a JWT token.'
+---
+
+<Badge color="blue" shape="pill">POST</Badge> `/api/auth/login`
+
+Validates a Cloudflare Turnstile token, checks the user's credentials, and returns a signed JWT on success.
+
+## Request body
+
+<ParamField body="strNombreUsuario" type="string" required>
+  Username of the account to authenticate.
+</ParamField>
+
+<ParamField body="strPwd" type="string" required>
+  Plain-text password. Compared against the bcrypt hash stored in the database.
+</ParamField>
+
+<ParamField body="turnstileToken" type="string" required>
+  Cloudflare Turnstile token obtained from the client-side widget. Verified against the Turnstile `/siteverify` endpoint before any credential check.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` on a successful login.
+</ResponseField>
+
+<ResponseField name="token" type="string" required>
+  Signed JWT. Expires in **8 hours**. The payload contains `id`, `idPerfil`, and `nombre`.
+</ResponseField>
+
+<ResponseField name="user" type="object" required>
+  <Expandable title="properties">
+    <ResponseField name="id" type="number">
+      Primary key of the user record.
+    </ResponseField>
+    <ResponseField name="nombre" type="string">
+      Username (`strNombreUsuario`).
+    </ResponseField>
+    <ResponseField name="idPerfil" type="number">
+      Profile (role) ID associated with the user.
+    </ResponseField>
+    <ResponseField name="correo" type="string">
+      Email address (`strCorreo`).
+    </ResponseField>
+    <ResponseField name="celular" type="string | null">
+      Phone number (`strNumeroCelular`). `null` if not set.
+    </ResponseField>
+    <ResponseField name="imagenUrl" type="string | null">
+      Cloudinary URL of the user's profile image. `null` if not uploaded.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Error responses
+
+| Status | Message | Cause |
+|--------|---------|-------|
+| `400` | `Fallo en la validación del captcha.` | Turnstile verification returned `success: false`. |
+| `401` | `El usuario no existe o su estado es inactivo.` | No user found with that username, or `idEstadoUsuario` is `false`. |
+| `401` | `Usuario o contraseña incorrectos.` | Password does not match the stored bcrypt hash. |
+
+<Note>
+  Store the returned token in an `auth_token` cookie with `maxAge` set to 8 hours (28800 seconds) to match the JWT expiry.
+</Note>
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request POST \
+  --url https://your-domain.com/api/auth/login \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "strNombreUsuario": "admin",
+    "strPwd": "secret123",
+    "turnstileToken": "<turnstile-response-token>"
+  }'
+```
+
+```typescript TypeScript
+const response = await fetch('/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    strNombreUsuario: 'admin',
+    strPwd: 'secret123',
+    turnstileToken: '<turnstile-response-token>',
+  }),
+});
+
+const data = await response.json();
+// Store the token in a cookie
+document.cookie = `auth_token=${data.token}; max-age=28800; path=/`;
+```
+
+</CodeGroup>
+
+### Success response
+
+```json 200
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "nombre": "admin",
+    "idPerfil": 1,
+    "correo": "admin@example.com",
+    "celular": "555-1234",
+    "imagenUrl": "https://res.cloudinary.com/demo/image/upload/usuarios_corp/sample.jpg"
+  }
+}
+```

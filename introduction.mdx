@@ -1,0 +1,50 @@
+---
+title: "Introduction"
+description: "Overview of Nuxt Secure — a corporate access management platform built with Nuxt.js 4 and Vue 3."
+---
+
+Nuxt Secure is a full-stack corporate web application for **secure access administration**. It gives organizations a complete identity and access management (IAM) solution — controlling which users can read, create, edit, or delete data in each part of the system.
+
+Built on **Nuxt.js 4** with server-side API routes, a **PostgreSQL** database (via Neon serverless), and **Drizzle ORM**, it is designed to be deployed as a SaaS product for companies that need fine-grained, profile-based access control.
+
+## Key features
+
+- **JWT authentication** — Cookie-based sessions with 8-hour token expiry and a global middleware that protects every route automatically.
+- **Role-based access control (RBAC)** — Every action (view, add, edit, delete, detail) is gated per profile and per module through a permissions matrix.
+- **User management** — Full CRUD for users, including active/inactive status and avatar uploads via Cloudinary.
+- **Profile management** — Define roles (profiles) with an administrator flag and assign them to users.
+- **Module management** — Register application modules and control access to them through the permissions matrix.
+- **Permissions matrix** — A visual editor to assign bitwise permissions to any profile-module combination.
+- **Cloudinary photo uploads** — Users can upload and manage profile photos with automatic compression.
+- **Cloudflare Turnstile CAPTCHA** — Bot protection on the login form using Cloudflare's privacy-friendly challenge.
+
+## Technology stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Nuxt.js 4 + Vue 3 |
+| Language | TypeScript |
+| Styling | Tailwind CSS |
+| Database | PostgreSQL (Neon Serverless) |
+| ORM | Drizzle ORM |
+| Auth | JSON Web Tokens (`jsonwebtoken`) |
+| Password hashing | `bcrypt` |
+| CAPTCHA | Cloudflare Turnstile (`@nuxtjs/turnstile`) |
+| Image hosting | Cloudinary |
+
+## Get started
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Run Nuxt Secure locally in minutes.
+  </Card>
+  <Card title="Authentication" icon="lock" href="/concepts/authentication">
+    Learn how JWT and Turnstile protect your app.
+  </Card>
+  <Card title="RBAC system" icon="shield-check" href="/concepts/rbac">
+    Understand how permissions are evaluated at runtime.
+  </Card>
+  <Card title="Permissions matrix" icon="table" href="/features/permissions-matrix">
+    Configure granular access per profile and module.
+  </Card>
+</CardGroup>

@@ -1,0 +1,394 @@
+---
+title: 'Permissions CRUD'
+description: 'Create, read, update, and delete individual permission records in the permisos_perfil table.'
+---
+
+## List permissions
+
+<Badge color="green" shape="pill">GET</Badge> `/api/permisos`
+
+Returns a paginated list of permission records joined with profile and module names. Results are ordered by `id` ascending with a fixed page size of **5** records.
+
+### Query parameters
+
+<ParamField query="page" type="number" default="1">
+  Page number to retrieve. Defaults to `1`.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the query completes without error.
+</ResponseField>
+
+<ResponseField name="data" type="object[]" required>
+  Array of permission records for the requested page.
+  <Expandable title="permission object properties">
+    <ResponseField name="id" type="number">
+      Primary key of the permission record.
+    </ResponseField>
+    <ResponseField name="idPerfil" type="number">
+      Foreign key referencing the `perfil` table.
+    </ResponseField>
+    <ResponseField name="idModulo" type="number">
+      Foreign key referencing the `modulo` table.
+    </ResponseField>
+    <ResponseField name="nombrePerfil" type="string">
+      Profile name resolved from the `perfil` join (`strNombrePerfil`).
+    </ResponseField>
+    <ResponseField name="nombreModulo" type="string">
+      Module name resolved from the `modulo` join (`strNombreModulo`).
+    </ResponseField>
+    <ResponseField name="bitAgregar" type="boolean">
+      Whether the profile may create records in this module.
+    </ResponseField>
+    <ResponseField name="bitEditar" type="boolean">
+      Whether the profile may edit records in this module.
+    </ResponseField>
+    <ResponseField name="bitConsulta" type="boolean">
+      Whether the profile may view records in this module.
+    </ResponseField>
+    <ResponseField name="bitEliminar" type="boolean">
+      Whether the profile may delete records in this module.
+    </ResponseField>
+    <ResponseField name="bitDetalle" type="boolean">
+      Whether the profile may view the detail view of records in this module.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="totalPages" type="number" required>
+  Total number of pages calculated as `ceil(totalRows / 5)`. Returns `1` when the table is empty.
+</ResponseField>
+
+### Error response
+
+```json 500
+{
+  "statusCode": 500,
+  "message": "Error al consultar permisos"
+}
+```
+
+### Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request GET \
+  --url 'https://your-domain.com/api/permisos?page=1' \
+  --cookie 'auth_token=<your-jwt>'
+```
+
+```typescript TypeScript
+const response = await fetch('/api/permisos?page=1', {
+  credentials: 'include',
+});
+
+const { success, data, totalPages } = await response.json();
+```
+
+</CodeGroup>
+
+#### Success response
+
+```json 200
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "idPerfil": 2,
+      "idModulo": 3,
+      "nombrePerfil": "Supervisor",
+      "nombreModulo": "Usuario",
+      "bitAgregar": false,
+      "bitEditar": true,
+      "bitConsulta": true,
+      "bitEliminar": false,
+      "bitDetalle": true
+    }
+  ],
+  "totalPages": 4
+}
+```
+
+---
+
+## Create permission
+
+<Badge color="blue" shape="pill">POST</Badge> `/api/permisos`
+
+Creates a single permission record linking a profile to a module with specific action flags.
+
+### Request body
+
+<ParamField body="idPerfil" type="number" required>
+  ID of the profile to assign permissions to.
+</ParamField>
+
+<ParamField body="idModulo" type="number" required>
+  ID of the module the permissions apply to.
+</ParamField>
+
+<ParamField body="bitAgregar" type="boolean" default="false">
+  Grant create access.
+</ParamField>
+
+<ParamField body="bitEditar" type="boolean" default="false">
+  Grant edit access.
+</ParamField>
+
+<ParamField body="bitConsulta" type="boolean" default="false">
+  Grant read/list access.
+</ParamField>
+
+<ParamField body="bitEliminar" type="boolean" default="false">
+  Grant delete access.
+</ParamField>
+
+<ParamField body="bitDetalle" type="boolean" default="false">
+  Grant detail-view access.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the record is inserted successfully.
+</ResponseField>
+
+<ResponseField name="data" type="object" required>
+  The newly created `permisos_perfil` row as returned by the database `RETURNING` clause.
+</ResponseField>
+
+### Error responses
+
+| Status | Message | Cause |
+|--------|---------|-------|
+| `400` | `Perfil y Módulo son obligatorios` | `idPerfil` or `idModulo` is missing from the request body. |
+
+### Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request POST \
+  --url https://your-domain.com/api/permisos \
+  --header 'Content-Type: application/json' \
+  --cookie 'auth_token=<your-jwt>' \
+  --data '{
+    "idPerfil": 2,
+    "idModulo": 3,
+    "bitAgregar": false,
+    "bitEditar": true,
+    "bitConsulta": true,
+    "bitEliminar": false,
+    "bitDetalle": true
+  }'
+```
+
+```typescript TypeScript
+const response = await fetch('/api/permisos', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({
+    idPerfil: 2,
+    idModulo: 3,
+    bitAgregar: false,
+    bitEditar: true,
+    bitConsulta: true,
+    bitEliminar: false,
+    bitDetalle: true,
+  }),
+});
+
+const { success, data } = await response.json();
+```
+
+</CodeGroup>
+
+#### Success response
+
+```json 200
+{
+  "success": true,
+  "data": {
+    "id": 42,
+    "idPerfil": 2,
+    "idModulo": 3,
+    "bitAgregar": false,
+    "bitEditar": true,
+    "bitConsulta": true,
+    "bitEliminar": false,
+    "bitDetalle": true
+  }
+}
+```
+
+---
+
+## Update permission
+
+<Badge color="orange" shape="pill">PUT</Badge> `/api/permisos/:id`
+
+Replaces all fields on an existing permission record. You must supply the full set of fields — any boolean omitted is coerced to `false`.
+
+### Path parameters
+
+<ParamField path="id" type="number" required>
+  Primary key of the `permisos_perfil` row to update.
+</ParamField>
+
+### Request body
+
+<ParamField body="idPerfil" type="number" required>
+  ID of the profile.
+</ParamField>
+
+<ParamField body="idModulo" type="number" required>
+  ID of the module.
+</ParamField>
+
+<ParamField body="bitAgregar" type="boolean">
+  Grant create access.
+</ParamField>
+
+<ParamField body="bitEditar" type="boolean">
+  Grant edit access.
+</ParamField>
+
+<ParamField body="bitConsulta" type="boolean">
+  Grant read/list access.
+</ParamField>
+
+<ParamField body="bitEliminar" type="boolean">
+  Grant delete access.
+</ParamField>
+
+<ParamField body="bitDetalle" type="boolean">
+  Grant detail-view access.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the update completes.
+</ResponseField>
+
+<ResponseField name="data" type="object" required>
+  The updated `permisos_perfil` row as returned by the database `RETURNING` clause.
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request PUT \
+  --url https://your-domain.com/api/permisos/42 \
+  --header 'Content-Type: application/json' \
+  --cookie 'auth_token=<your-jwt>' \
+  --data '{
+    "idPerfil": 2,
+    "idModulo": 3,
+    "bitAgregar": true,
+    "bitEditar": true,
+    "bitConsulta": true,
+    "bitEliminar": false,
+    "bitDetalle": true
+  }'
+```
+
+```typescript TypeScript
+const response = await fetch('/api/permisos/42', {
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({
+    idPerfil: 2,
+    idModulo: 3,
+    bitAgregar: true,
+    bitEditar: true,
+    bitConsulta: true,
+    bitEliminar: false,
+    bitDetalle: true,
+  }),
+});
+
+const { success, data } = await response.json();
+```
+
+</CodeGroup>
+
+#### Success response
+
+```json 200
+{
+  "success": true,
+  "data": {
+    "id": 42,
+    "idPerfil": 2,
+    "idModulo": 3,
+    "bitAgregar": true,
+    "bitEditar": true,
+    "bitConsulta": true,
+    "bitEliminar": false,
+    "bitDetalle": true
+  }
+}
+```
+
+---
+
+## Delete permission
+
+<Badge color="red" shape="pill">DELETE</Badge> `/api/permisos/:id`
+
+Permanently removes a single permission record from the `permisos_perfil` table.
+
+### Path parameters
+
+<ParamField path="id" type="number" required>
+  Primary key of the `permisos_perfil` row to delete.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the delete completes.
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  Always `"Eliminado correctamente"`.
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request DELETE \
+  --url https://your-domain.com/api/permisos/42 \
+  --cookie 'auth_token=<your-jwt>'
+```
+
+```typescript TypeScript
+const response = await fetch('/api/permisos/42', {
+  method: 'DELETE',
+  credentials: 'include',
+});
+
+const { success, message } = await response.json();
+```
+
+</CodeGroup>
+
+#### Success response
+
+```json 200
+{
+  "success": true,
+  "message": "Eliminado correctamente"
+}
+```

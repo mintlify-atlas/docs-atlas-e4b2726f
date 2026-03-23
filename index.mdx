@@ -1,97 +1,79 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Nuxt Secure"
+description: "A corporate access management platform with JWT authentication, role-based permissions, and user administration — built with Nuxt.js and Vue 3."
 ---
 
-## Setting up
-
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Set up Nuxt Secure locally and run your first login in minutes.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Authentication" icon="lock" href="/concepts/authentication">
+    Learn how JWT authentication and Cloudflare Turnstile protect your app.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="User Management" icon="users" href="/features/user-management">
+    Create, edit, and deactivate users with profile photo support.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Permissions Matrix" icon="table" href="/features/permissions-matrix">
+    Configure granular CRUD-level access per profile and module.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What is Nuxt Secure?
 
-Everything you need to create world-class documentation.
+Nuxt Secure is a responsive corporate web application designed for **secure access administration**. It provides a complete identity and access management (IAM) solution for organizations that need to control which users can read, create, edit, or delete data in each part of the application.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+The system is built on top of **Nuxt.js 4** with server-side API routes, a **PostgreSQL** database (via Neon serverless), and **Drizzle ORM**. Authentication is powered by **JSON Web Tokens (JWT)** and protected against bots with **Cloudflare Turnstile** CAPTCHA.
 
-## Need inspiration?
+## Core capabilities
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<CardGroup cols={3}>
+  <Card title="JWT Authentication" icon="key">
+    Secure cookie-based sessions with 8-hour token expiry and global route protection middleware.
+  </Card>
+  <Card title="Role-Based Access Control" icon="shield-check">
+    Every action — view, add, edit, delete, detail — is gated per profile and per module.
+  </Card>
+  <Card title="User Administration" icon="user-gear">
+    Full CRUD for users including status management (active/inactive) and avatar uploads via Cloudinary.
+  </Card>
+  <Card title="Profile Management" icon="id-badge">
+    Define roles (profiles) with an administrator flag and assign them to users.
+  </Card>
+  <Card title="Module Registry" icon="grid">
+    Register application modules and control access to them through the permissions matrix.
+  </Card>
+  <Card title="Permissions Matrix" icon="lock-open">
+    A visual editor to assign bitwise permissions (add, edit, query, delete, detail) to any profile-module combination.
+  </Card>
+</CardGroup>
+
+## Technology stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Nuxt.js 4 + Vue 3 |
+| Language | TypeScript |
+| Styling | Tailwind CSS |
+| Database | PostgreSQL (Neon Serverless) |
+| ORM | Drizzle ORM |
+| Auth | JSON Web Tokens (jsonwebtoken) |
+| Password hashing | bcrypt |
+| CAPTCHA | Cloudflare Turnstile |
+| Image hosting | Cloudinary |
+
+## Navigation
+
+<CardGroup cols={2}>
+  <Card title="Environment setup" icon="gear" href="/environment-setup">
+    Configure all required environment variables before running the app.
+  </Card>
+  <Card title="Architecture" icon="diagram-project" href="/concepts/architecture">
+    Understand the full-stack layout of Nuxt Secure.
+  </Card>
+  <Card title="RBAC system" icon="sitemap" href="/concepts/rbac">
+    Deep dive into how permissions are evaluated at runtime.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/auth/login">
+    Browse all server API endpoints with request/response documentation.
+  </Card>
+</CardGroup>

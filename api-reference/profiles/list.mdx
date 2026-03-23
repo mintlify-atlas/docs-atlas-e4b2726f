@@ -1,0 +1,172 @@
+---
+title: 'List profiles'
+description: 'Retrieve a paginated list of profiles or a full list for dropdown population.'
+---
+
+## Paginated list
+
+<Badge color="green" shape="pill">GET</Badge> `/api/perfil`
+
+Returns a paginated list of profiles. Results are ordered by `id` descending, with a fixed page size of **5** records.
+
+### Query parameters
+
+<ParamField query="page" type="number" default="1">
+  Page number to retrieve. Defaults to `1`.
+</ParamField>
+
+<ParamField query="search" type="string">
+  Case-insensitive substring filter applied to `strNombrePerfil`. Uses SQL `ILIKE '%value%'`.
+</ParamField>
+
+<ParamField query="isAdmin" type="string">
+  Filter by administrator flag. Pass `"true"` to return only administrator profiles, `"false"` to return only non-administrator profiles. Omit to return all profiles regardless of flag.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the query completes without error.
+</ResponseField>
+
+<ResponseField name="data" type="object[]" required>
+  Array of profile objects for the requested page.
+  <Expandable title="profile object properties">
+    <ResponseField name="id" type="number">
+      Primary key of the profile.
+    </ResponseField>
+    <ResponseField name="strNombrePerfil" type="string">
+      Profile name.
+    </ResponseField>
+    <ResponseField name="bitAdministrador" type="boolean">
+      `true` if this profile has administrator-level access.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="totalPages" type="number" required>
+  Total number of pages available given the current filters and a page size of 5.
+</ResponseField>
+
+### Error response
+
+When an unexpected server error occurs the handler catches the exception and returns:
+
+```json 500
+{
+  "success": false,
+  "message": "Ocurrió un error al consultar los perfiles."
+}
+```
+
+### Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request GET \
+  --url 'https://your-domain.com/api/perfil?page=1&search=admin&isAdmin=true' \
+  --cookie 'auth_token=<your-jwt>'
+```
+
+```typescript TypeScript
+const params = new URLSearchParams({
+  page: '1',
+  search: 'admin',
+  isAdmin: 'true',
+});
+
+const response = await fetch(`/api/perfil?${params}`, {
+  credentials: 'include',
+});
+
+const { success, data, totalPages } = await response.json();
+```
+
+</CodeGroup>
+
+#### Success response
+
+```json 200
+{
+  "success": true,
+  "data": [
+    {
+      "id": 3,
+      "strNombrePerfil": "Administrador",
+      "bitAdministrador": true
+    }
+  ],
+  "totalPages": 2
+}
+```
+
+---
+
+## Simple list (for dropdowns)
+
+<Badge color="green" shape="pill">GET</Badge> `/api/perfil/list`
+
+Returns all profiles without pagination. Only `id` and `strNombrePerfil` are included. Intended for populating select inputs in the UI.
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the query completes without error.
+</ResponseField>
+
+<ResponseField name="data" type="object[]" required>
+  Array of all profile objects.
+  <Expandable title="profile object properties">
+    <ResponseField name="id" type="number">
+      Primary key of the profile.
+    </ResponseField>
+    <ResponseField name="strNombrePerfil" type="string">
+      Profile name.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error response
+
+When an unexpected server error occurs:
+
+```json 500
+{
+  "statusCode": 500,
+  "message": "Error al cargar lista de perfiles"
+}
+```
+
+### Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request GET \
+  --url 'https://your-domain.com/api/perfil/list' \
+  --cookie 'auth_token=<your-jwt>'
+```
+
+```typescript TypeScript
+const response = await fetch('/api/perfil/list', {
+  credentials: 'include',
+});
+
+const { success, data } = await response.json();
+```
+
+</CodeGroup>
+
+#### Success response
+
+```json 200
+{
+  "success": true,
+  "data": [
+    { "id": 1, "strNombrePerfil": "Operador" },
+    { "id": 2, "strNombrePerfil": "Supervisor" },
+    { "id": 3, "strNombrePerfil": "Administrador" }
+  ]
+}
+```

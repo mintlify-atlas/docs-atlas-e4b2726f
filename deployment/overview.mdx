@@ -1,0 +1,71 @@
+---
+title: "Deployment overview"
+description: "Options and considerations for deploying Nuxt Secure to production."
+---
+
+Nuxt Secure is a full-stack Nuxt.js application built with Nitro. It can be deployed as a traditional Node.js server or to serverless and edge platforms that support Nitro output targets.
+
+## Deployment options
+
+<CardGroup cols={2}>
+  <Card title="Node.js server" icon="server">
+    Deploy to any VPS or cloud VM — DigitalOcean Droplets, AWS EC2, or similar. Run the built output directly with Node.js or manage the process with PM2.
+  </Card>
+  <Card title="Vercel" icon="triangle">
+    Serverless functions with zero-config Nuxt detection. Recommended when using Neon DB, as both are optimized for serverless environments.
+  </Card>
+  <Card title="Netlify" icon="cloud">
+    Deploy to Netlify's serverless functions platform. Nuxt's Nitro build system produces a Netlify-compatible output automatically.
+  </Card>
+  <Card title="Railway / Render" icon="box">
+    Docker-based platforms that build and run your application as a container. Suitable for teams that prefer a managed infrastructure approach.
+  </Card>
+</CardGroup>
+
+## Build and preview commands
+
+Both commands are defined in `package.json`:
+
+| Command | Script | Description |
+|---|---|---|
+| `npm run build` | `nuxt build` | Compiles the application for production. Output goes to `.output/`. |
+| `npm run preview` | `nuxt preview` | Serves the production build locally for verification before deploying. |
+
+<Note>
+  The `private: true` field in `package.json` means this project is not published to the npm registry. It is intended for direct deployment only.
+</Note>
+
+## Requirements before deploying
+
+Before you deploy to any environment, confirm the following:
+
+- **Environment variables** — All required variables are set in your hosting environment. See [Environment variables](/configuration/environment-variables) for the full list.
+- **Database schema** — The Drizzle schema has been pushed to your production database with `npx drizzle-kit push`.
+- **Cloudinary credentials** — `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` are set if profile photo uploads are required.
+- **Turnstile production keys** — You are using keys registered for your production domain, not test keys. Test keys will cause CAPTCHA failures in production.
+
+## Pre-deployment checklist
+
+- [ ] `DATABASE_URL` points to the production database
+- [ ] `JWT_SECRET` is a strong, randomly generated string (32+ characters)
+- [ ] Cloudinary credentials are set (if using photo uploads)
+- [ ] `NUXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are production keys registered to your domain
+- [ ] Database schema has been pushed (`npx drizzle-kit push`)
+- [ ] Initial admin user has been seeded or migrated from development
+- [ ] HTTPS is enabled on your production domain
+- [ ] The `.env` file is not committed to version control
+
+<Warning>
+  Never use Cloudflare Turnstile test keys in production. Test keys bypass CAPTCHA verification and provide no bot protection.
+</Warning>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Production deployment" icon="rocket" href="/deployment/production">
+    Step-by-step instructions for deploying Nuxt Secure to a Node.js server or Vercel.
+  </Card>
+  <Card title="Environment variables" icon="key" href="/configuration/environment-variables">
+    Complete reference for all required and optional environment variables.
+  </Card>
+</CardGroup>

@@ -1,0 +1,63 @@
+---
+title: 'Delete user'
+description: 'Permanently delete a user account.'
+---
+
+<Badge color="red" shape="pill">DELETE</Badge> `/api/usuario/:id`
+
+Permanently removes the user record with the given `id` from the database. This is a **hard delete** — the row is removed with `DELETE FROM usuario WHERE id = :id`. There is no soft-delete or deactivation performed by this endpoint.
+
+## Path parameters
+
+<ParamField path="id" type="number" required>
+  Primary key of the user to delete.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the delete statement executes without error.
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  Confirmation string. Always `"Eliminado"` on success.
+</ResponseField>
+
+<Warning>
+  This operation is irreversible. The record is permanently removed from the database with no soft-delete fallback.
+</Warning>
+
+<Note>
+  The handler does not check whether the `id` exists before executing the delete. If the `id` does not match any record, the statement runs without error and the response is still `{ success: true, message: "Eliminado" }`.
+</Note>
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request DELETE \
+  --url https://your-domain.com/api/usuario/12 \
+  --cookie 'auth_token=<your-jwt>'
+```
+
+```typescript TypeScript
+const response = await fetch('/api/usuario/12', {
+  method: 'DELETE',
+  credentials: 'include',
+});
+
+const { success, message } = await response.json();
+// success === true, message === 'Eliminado'
+```
+
+</CodeGroup>
+
+### Success response
+
+```json 200
+{
+  "success": true,
+  "message": "Eliminado"
+}
+```

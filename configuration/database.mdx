@@ -1,0 +1,140 @@
+---
+title: "Database configuration"
+description: "Setting up PostgreSQL with Neon and Drizzle ORM."
+---
+
+Nuxt Secure uses [Neon](https://neon.tech) serverless PostgreSQL as its database and [Drizzle ORM](https://orm.drizzle.team) for schema management and queries.
+
+## Setting up Neon
+
+<Steps>
+  <Step title="Create a Neon account">
+    Go to [neon.tech](https://neon.tech) and sign up for a free account.
+  </Step>
+
+  <Step title="Create a new project">
+    From the Neon dashboard, click **New Project**. Give it a name and choose a region closest to your deployment.
+  </Step>
+
+  <Step title="Copy the connection string">
+    In the project dashboard, navigate to **Connection Details**. Copy the connection string. It has the format:
+
+    ```
+    postgresql://user:password@host/dbname
+    ```
+  </Step>
+
+  <Step title="Add DATABASE_URL to your .env file">
+    ```ini .env
+    DATABASE_URL=postgresql://user:password@host/dbname
+    ```
+  </Step>
+</Steps>
+
+## Drizzle configuration
+
+`drizzle.config.ts` in the project root tells Drizzle Kit where to find the schema and how to connect to the database:
+
+```typescript drizzle.config.ts
+import { defineConfig } from 'drizzle-kit';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
+
+export default defineConfig({
+  schema: './server/database/schema.ts',
+  out: './server/database/migrations',
+  dialect: 'postgresql',
+  dbCredentials: {
+    url: process.env.DATABASE_URL!,
+  },
+});
+```
+
+Migration files are stored in `server/database/migrations/`.
+
+## Pushing the schema
+
+To create or update tables in your database to match the current schema, run:
+
+```bash
+npx drizzle-kit push
+```
+
+This is the fastest way to apply schema changes during development. It reads `DATABASE_URL` from your `.env` file via `drizzle.config.ts`.
+
+<Note>
+  `drizzle-kit push` directly applies your schema to the database without generating migration files. Use it for development. For production, consider using migration files instead (see below).
+</Note>
+
+## Running migrations
+
+If you prefer migration files over `push`, generate them first:
+
+```bash
+npx drizzle-kit generate
+```
+
+Then apply them:
+
+```bash
+npx drizzle-kit migrate
+```
+
+Generated migration files are saved to `server/database/migrations/`.
+
+## Seeding initial data
+
+Run the seed script to create the initial **Super Administrador** profile and default `admin` user:
+
+```bash
+npx tsx server/database/seed.ts
+```
+
+A module seed script is also available at `server/database/moduleSeed.ts` for seeding module and menu records.
+
+<Tip>
+  Change the default admin password immediately after your first login in a production environment.
+</Tip>
+
+## Database client
+
+The database client is set up in `server/database/index.ts` using `@neondatabase/serverless` and `drizzle-orm/neon-http`:
+
+```typescript server/database/index.ts
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+import * as schema from './schema';
+
+const sql = neon(process.env.DATABASE_URL!);
+export const db = drizzle(sql, { schema });
+```
+
+Import `db` in any server route to run queries:
+
+```typescript server/api/example.get.ts
+import { db } from '~/server/database';
+import { usuario } from '~/server/database/schema';
+
+export default defineEventHandler(async () => {
+  return await db.select().from(usuario);
+});
+```
+
+## Database schema overview
+
+The schema is defined in `server/database/schema.ts` and contains five tables:
+
+| Table | Description |
+|---|---|
+| `perfil` | User profiles (roles) with an administrator flag. |
+| `usuario` | User accounts. References `perfil`. Stores credentials, contact info, and profile photo URL. |
+| `modulo` | Application modules used for permission scoping. |
+| `permisos_perfil` | Per-profile permissions for each module (add, edit, view, delete, detail). |
+| `menu` | Menu entries linking to modules. |
+
+See [Architecture](/concepts/architecture) for full table documentation.
+
+<Tip>
+  Use [Neon branching](https://neon.tech/docs/guides/branching-intro) to create isolated database branches for staging and production environments. Each branch gets its own connection string.
+</Tip>

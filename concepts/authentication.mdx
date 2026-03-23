@@ -1,0 +1,192 @@
+---
+title: "Authentication"
+description: "How JWT authentication and Cloudflare Turnstile work in Nuxt Secure."
+---
+
+Nuxt Secure uses **JSON Web Tokens (JWT)** for stateless session management combined with **Cloudflare Turnstile** CAPTCHA to block automated login attempts. Sessions are stored in an HTTP cookie so they survive page refreshes and work during server-side rendering.
+
+## Login flow
+
+<Steps>
+  <Step title="User submits the login form">
+    The login page collects `strNombreUsuario` (username), `strPwd` (password), and a Turnstile token generated automatically by the `@nuxtjs/turnstile` widget when the user solves the challenge.
+  </Step>
+  <Step title="Turnstile token is validated">
+    The API handler posts the token to `https://challenges.cloudflare.com/turnstile/v0/siteverify` using the server-side `TURNSTILE_SECRET_KEY`. If validation fails, the request is rejected with HTTP 400 before the database is ever queried.
+  </Step>
+  <Step title="Database lookup by username">
+    Drizzle ORM queries the `usuario` table using `eq(usuario.strNombreUsuario, strNombreUsuario)`. If no row is found, or the user's `idEstadoUsuario` is `false` (inactive), HTTP 401 is returned.
+  </Step>
+  <Step title="Password verification">
+    `bcrypt.compare()` compares the submitted plain-text password against the hashed value stored in `strPwd`. A mismatch returns HTTP 401.
+  </Step>
+  <Step title="JWT is issued">
+    `jwt.sign()` creates a token containing `{ id, idPerfil, nombre }` signed with `JWT_SECRET`. The token expires in **8 hours**.
+  </Step>
+  <Step title="Token stored in cookie">
+    The client composable writes the token to the `auth_token` cookie with `maxAge: 60 * 60 * 8` (28 800 seconds). `useCookie` from Nuxt ensures the cookie is accessible both server-side and client-side.
+  </Step>
+  <Step title="User data persisted">
+    The user object (`id`, `nombre`, `idPerfil`, `correo`, `celular`, `imagenUrl`) is serialised to `localStorage` under the key `usuario` and stored in `useState('usuarioLogueado')` for reactive access across all components.
+  </Step>
+  <Step title="Permissions loaded">
+    `cargarMisPermisos(idPerfil)` fetches `/api/permisos/mis-permisos/:idPerfil` and stores the result in `useState('misPermisos')` as a `Record<string, PermisosAccion>` keyed by module name in uppercase.
+  </Step>
+  <Step title="Redirect to the main page">
+    The router navigates to `/principal-1` on success.
+  </Step>
+</Steps>
+
+## Login handler source
+
+```typescript server/api/auth/login.post.ts
+import { db } from '~~/server/database'
+import { usuario } from '~~/server/database/schema'
+import { eq } from 'drizzle-orm'
+import bcrypt from 'bcrypt'
+import jwt from 'jsonwebtoken'
+
+export default defineEventHandler(async (event) => {
+  const body = await readBody(event)
+  const config = useRuntimeConfig()
+
+  const { strNombreUsuario, strPwd, turnstileToken } = body
+
+  // 1. Validate Cloudflare Turnstile token
+  const verifyUrl = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
+  const turnstileResponse = await fetch(verifyUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `secret=${config.turnstile.secretKey}&response=${turnstileToken}`
+  })
+
+  const turnstileData = await turnstileResponse.json()
+
+  if (!turnstileData.success) {
+    throw createError({ statusCode: 400, message: 'Fallo en la validación del captcha.' })
+  }
+
+  // 2. Look up the user
+  const [user] = await db.select()
+    .from(usuario)
+    .where(eq(usuario.strNombreUsuario, strNombreUsuario))
+
+  // 3. Validate existence and active status
+  if (!user || !user.idEstadoUsuario) {
+    throw createError({
+      statusCode: 401,
+      message: 'El usuario no existe o su estado es inactivo.'
+    })
+  }
+
+  // 4. Validate password
+  const isValidPassword = await bcrypt.compare(strPwd, user.strPwd)
+
+  if (!isValidPassword) {
+    throw createError({
+      statusCode: 401,
+      message: 'Usuario o contraseña incorrectos.'
+    })
+  }
+
+  // 5. Issue JWT
+  const token = jwt.sign(
+    {
+      id: user.id,
+      idPerfil: user.idPerfil,
+      nombre: user.strNombreUsuario
+    },
+    config.jwtSecret,
+    { expiresIn: '8h' }
+  )
+
+  return {
+    success: true,
+    token: token,
+    user: {
+      id: user.id,
+      nombre: user.strNombreUsuario,
+      idPerfil: user.idPerfil,
+      correo: user.strCorreo,
+      celular: user.strNumeroCelular,
+      imagenUrl: user.imagenUrl
+    }
+  }
+})
+```
+
+## Global route middleware
+
+`app/middleware/auth.global.ts` runs before every route navigation — on the server during SSR and on the client during SPA navigation. It enforces three rules:
+
+1. **Root redirect** — visiting `/` always redirects to `/login`.
+2. **Route protection** — any route other than `/login` requires a valid `auth_token` cookie; missing token redirects to `/login`.
+3. **Double-login prevention** — a user who already has a token and tries to visit `/login` is sent to `/principal-1` instead.
+
+```typescript app/middleware/auth.global.ts
+export default defineNuxtRouteMiddleware((to, from) => {
+  const token = useCookie('auth_token')
+
+  // Redirect root to login
+  if (to.path === '/') {
+    return navigateTo('/login')
+  }
+
+  // Protect all non-login routes
+  if (!token.value && to.path !== '/login') {
+    return navigateTo('/login')
+  }
+
+  // Prevent navigating to login when already authenticated
+  if (token.value && to.path === '/login') {
+    return navigateTo('/principal-1')
+  }
+})
+```
+
+<Tip>
+`useCookie` works in both SSR and client contexts. Avoid reading `auth_token` from `document.cookie` directly — it will not be available during server rendering.
+</Tip>
+
+## Session persistence
+
+Nuxt's `useState` is reset when the page is hard-refreshed (F5). `restaurarSesion()` in `useAuth.ts` handles this by reading the user object back from `localStorage` and re-fetching permissions if the in-memory state is empty:
+
+```typescript app/composables/useAuth.ts
+const restaurarSesion = async () => {
+  if (!usuarioLogueado.value) {
+    const userLocal = localStorage.getItem('usuario')
+    if (userLocal) {
+      usuarioLogueado.value = JSON.parse(userLocal)
+
+      if (Object.keys(misPermisos.value).length === 0 && usuarioLogueado.value?.idPerfil) {
+        await cargarMisPermisos(usuarioLogueado.value.idPerfil)
+      }
+    }
+  }
+}
+```
+
+Call `restaurarSesion()` in the `onMounted` hook of any page or layout that needs reactive user data after a refresh.
+
+## JWT token structure
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | number | User's database row ID |
+| `idPerfil` | number | Profile (role) ID — used to load permissions |
+| `nombre` | string | Username (`strNombreUsuario`) |
+| `exp` | number | Unix timestamp — automatically set to 8 hours from issue time |
+
+The secret used to sign and verify tokens is read from the `JWT_SECRET` environment variable via `useRuntimeConfig().jwtSecret`.
+
+## Security notes
+
+<Warning>
+The `auth_token` cookie is not set with `httpOnly` by default in the current implementation. If you expose this app to the public internet, consider adding the `httpOnly` and `secure` flags to prevent client-side JavaScript from reading the token.
+</Warning>
+
+- **bcrypt hashing** — passwords are never stored in plain text; bcrypt's work factor makes brute-force attacks computationally expensive.
+- **Turnstile CAPTCHA** — the Cloudflare challenge runs before any database query, blocking credential-stuffing bots without storing any user fingerprint.
+- **Short token lifetime** — the 8-hour expiry limits the window of exposure if a token is leaked.
+- **Status check** — inactive users (`idEstadoUsuario: false`) are rejected at login without revealing which check failed.

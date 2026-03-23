@@ -1,0 +1,82 @@
+---
+title: 'Delete module'
+description: 'Permanently delete a module and all its associated permissions and menu entries.'
+---
+
+<Badge color="red" shape="pill">DELETE</Badge> `/api/modulo/:id`
+
+Permanently removes a module and cascades the deletion to all related records. The endpoint deletes in this order:
+
+1. All `permisos_perfil` rows where `idModulo` matches the given `id`.
+2. All `menu` rows where `idModulo` matches the given `id`.
+3. The `modulo` record itself.
+
+<Warning>
+  This operation is irreversible. The module and all associated permissions and menu entries are permanently removed.
+</Warning>
+
+## Path parameters
+
+<ParamField path="id" type="number" required>
+  Primary key of the module to delete.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the module and all related records are deleted successfully.
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  Confirmation string. Always `"Módulo y sus permisos asociados eliminados correctamente."` on success.
+</ResponseField>
+
+## Error responses
+
+| Status | Message | Cause |
+|--------|---------|-------|
+| `200` (with `success: false`) | `ID de módulo inválido.` | The `:id` path segment is missing or resolves to `0` or `NaN`. |
+| `200` (with `success: false`) | `Ocurrió un error al intentar eliminar el módulo.` | Any unhandled database error during the delete sequence. |
+
+<Note>
+  Errors for this endpoint return HTTP `200` with `success: false` in the body rather than a 4xx/5xx HTTP status code.
+</Note>
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request DELETE \
+  --url https://your-domain.com/api/modulo/6 \
+  --cookie 'auth_token=<your-jwt>'
+```
+
+```typescript TypeScript
+const response = await fetch('/api/modulo/6', {
+  method: 'DELETE',
+  credentials: 'include',
+});
+
+const { success, message } = await response.json();
+```
+
+</CodeGroup>
+
+### Success response
+
+```json 200
+{
+  "success": true,
+  "message": "Módulo y sus permisos asociados eliminados correctamente."
+}
+```
+
+### Error response (invalid ID)
+
+```json 200
+{
+  "success": false,
+  "message": "ID de módulo inválido."
+}
+```

@@ -1,0 +1,94 @@
+---
+title: "Module management"
+description: Register and manage application modules for access control in Nuxt Secure.
+---
+
+Modules represent independently controllable sections or features of the application. Each module registered in Nuxt Secure becomes a row in the [permissions matrix](/features/permissions-matrix), allowing administrators to grant or deny the five permission actions to each profile.
+
+## Overview
+
+The **Catálogo de Módulos** page lists all application modules. From here you can create new modules, edit their names, view their details, and delete them.
+
+Access requires the `bitConsulta` permission on the `MÓDULO` module. Without it, the application redirects you to `/` before the page renders.
+
+## Filtering modules
+
+A single search filter is available: a case-insensitive partial match on `strNombreModulo`. The filter applies with a 400 ms debounce. Click **Limpiar** to reset.
+
+## Creating a module
+
+Click **Nuevo Módulo** to open the creation form. This button requires both `bitConsulta` and `bitAgregar` on the `MÓDULO` module.
+
+<Steps>
+  <Step title="Enter a module name">
+    Provide the name for the module in `strNombreModulo` (e.g., `USUARIO`, `PERMISOS-PERFIL`, `INVENTARIO`). This name is the key used in RBAC lookups throughout the application.
+  </Step>
+  <Step title="Save the module">
+    Click **Guardar Registro**. The module is immediately available in the permissions matrix.
+  </Step>
+  <Step title="Assign permissions">
+    After creating the module, navigate to the [Permissions matrix](/features/permissions-matrix) and configure which profiles can access it and what actions they can perform.
+  </Step>
+</Steps>
+
+<Tip>
+  Module names are compared using `.toUpperCase()` inside `tienePermiso()`, so `tienePermiso('usuario', 'bitConsulta')` and `tienePermiso('USUARIO', 'bitConsulta')` are equivalent. However, the canonical convention is to store and reference module names in **uppercase** (e.g., `USUARIO`, `PERFIL`, `PERMISOS-PERFIL`) to avoid confusion.
+</Tip>
+
+## Editing a module
+
+Click the edit icon on any row to rename the module. This requires `bitEditar` on the `MÓDULO` module.
+
+<Warning>
+  Renaming a module changes the key used in `tienePermiso()` calls throughout the application. If any page or composable references the old module name, those permission checks will return `false` until the code is updated to match the new name.
+</Warning>
+
+## Deleting a module
+
+Click the delete icon on any row and confirm the dialog. This requires `bitEliminar` on the `MÓDULO` module.
+
+<Warning>
+  Deleting a module also removes its associated permission rows from `permisos_perfil` for all profiles. This is confirmed in the deletion dialog: "También se borrarán sus permisos de la base de datos." Users whose profiles had permissions on the deleted module will immediately lose access to the corresponding section.
+</Warning>
+
+## Menu association
+
+The `menu` table links modules to navigation menu items. Each row in `menu` associates a menu entry (`idMenu`) with a module (`idModulo`). This allows the sidebar navigation to show or hide items based on whether the current user has `bitConsulta` on the linked module.
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | serial PK | Auto-increment primary key |
+| `idMenu` | integer | Menu item identifier |
+| `idModulo` | integer FK | References `modulo.id` |
+
+## Permission gates
+
+Actions on the modules page are gated by the `MÓDULO` module:
+
+| Permission flag | Controls |
+|---|---|
+| `bitConsulta` | View the modules table and access the page |
+| `bitAgregar` | Show the **Nuevo Módulo** button |
+| `bitEditar` | Show the edit button per row |
+| `bitEliminar` | Show the delete button per row |
+| `bitDetalle` | Show the detail view button per row |
+
+## Module data model
+
+The `modulo` table is defined in `server/database/schema.ts`:
+
+| Column | Type | Required | Description |
+|---|---|---|---|
+| `id` | serial PK | Yes | Auto-increment primary key |
+| `strNombreModulo` | varchar(255) | Yes | Module name used as the RBAC key |
+
+## Related pages
+
+<Columns cols={2}>
+  <Card title="Permissions matrix" icon="table" href="/features/permissions-matrix">
+    Assign permissions to each profile for every module registered here.
+  </Card>
+  <Card title="Role-based access control" icon="lock" href="/concepts/rbac">
+    Understand how modules, profiles, and permission flags work together.
+  </Card>
+</Columns>

@@ -1,0 +1,96 @@
+---
+title: 'Update module'
+description: 'Update an existing module name.'
+---
+
+<Badge color="yellow" shape="pill">PUT</Badge> `/api/modulo/:id`
+
+Updates the `strNombreModulo` field of an existing module. The new name is automatically converted to uppercase before being stored.
+
+## Path parameters
+
+<ParamField path="id" type="number" required>
+  Primary key of the module to update.
+</ParamField>
+
+## Request body
+
+<ParamField body="strNombreModulo" type="string" required>
+  Updated module name. Stored in uppercase regardless of the casing supplied.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the update completes without error.
+</ResponseField>
+
+<ResponseField name="data" type="object" required>
+  The updated module record as returned by the database.
+  <Expandable title="properties">
+    <ResponseField name="id" type="number">
+      Primary key.
+    </ResponseField>
+    <ResponseField name="strNombreModulo" type="string">
+      Updated module name in uppercase.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Error responses
+
+| Status | Message | Cause |
+|--------|---------|-------|
+| `200` (with `success: false`) | `ID de módulo inválido.` | The `:id` path segment is missing or resolves to `0` or `NaN`. |
+| `200` (with `success: false`) | `El nombre del módulo es obligatorio.` | `strNombreModulo` is missing or falsy in the request body. |
+| `200` (with `success: false`) | `No se pudo actualizar el módulo.` | Any unhandled database error during the update. |
+
+<Note>
+  Validation and database errors for this endpoint return HTTP `200` with `success: false` in the body rather than a 4xx/5xx HTTP status code. The handler does not return a `404` if the `id` does not match any record — it returns `success: true` with `data` set to `undefined`.
+</Note>
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request PUT \
+  --url https://your-domain.com/api/modulo/6 \
+  --header 'Content-Type: application/json' \
+  --cookie 'auth_token=<your-jwt>' \
+  --data '{"strNombreModulo": "Ventas Externas"}'
+```
+
+```typescript TypeScript
+const response = await fetch('/api/modulo/6', {
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({ strNombreModulo: 'Ventas Externas' }),
+});
+
+const { success, data } = await response.json();
+```
+
+</CodeGroup>
+
+### Success response
+
+```json 200
+{
+  "success": true,
+  "data": {
+    "id": 6,
+    "strNombreModulo": "VENTAS EXTERNAS"
+  }
+}
+```
+
+### Error response (missing name)
+
+```json 200
+{
+  "success": false,
+  "message": "El nombre del módulo es obligatorio."
+}
+```

@@ -1,0 +1,115 @@
+---
+title: "Permissions matrix"
+description: Configure granular access permissions per profile and module in Nuxt Secure.
+---
+
+The **Matriz de Permisos por Perfil** page (`/seguridad/permisos`) gives administrators a visual grid to control exactly what each profile can do in every module. Each cell in the matrix is a checkbox representing one permission action.
+
+## Overview
+
+The matrix page lists every registered [module](/features/module-management) as a row and exposes five permission flags per module. You select a profile from the dropdown, review or adjust the checkboxes, and save the entire configuration in a single operation.
+
+Access requires the `bitConsulta` permission on the `PERMISOS-PERFIL` module. Without it, the application redirects you to `/` before the page renders.
+
+## The five permission flags
+
+Each module row exposes the following toggleable flags:
+
+| Flag | UI label | Description |
+|---|---|---|
+| `bitConsulta` | Consultar | View and list records in the module |
+| `bitAgregar` | Agregar | Create new records |
+| `bitEditar` | Editar | Edit existing records |
+| `bitDetalle` | Detalle | Open the detail view of a record |
+| `bitEliminar` | Eliminar | Delete records |
+
+All flags default to `false`. A flag must be explicitly enabled for the corresponding action to be permitted.
+
+## Using the matrix
+
+<Steps>
+  <Step title="Select a profile">
+    Use the **Perfil del Sistema** dropdown at the top of the page to choose the profile you want to configure. The dropdown lists all profiles registered in the system.
+  </Step>
+  <Step title="Review the current permissions">
+    Once a profile is selected, the matrix loads the profile's current permission set. Each row represents a module; each column represents one of the five actions. Checked boxes indicate granted permissions.
+  </Step>
+  <Step title="Toggle checkboxes">
+    Click any checkbox to grant or revoke the corresponding permission for that module and action. You can modify as many rows and flags as needed before saving.
+
+    Checkboxes are disabled (read-only) if you do not have `bitEditar` on the `PERMISOS-PERFIL` module.
+  </Step>
+  <Step title="Click Guardar Permisos">
+    Click the **Guardar Permisos** button to submit your changes. This button only appears if you have `bitEditar` on the `PERMISOS-PERFIL` module.
+  </Step>
+  <Step title="Confirm the update">
+    A confirmation modal appears with the message: *"¿Estás seguro de que deseas actualizar todos los permisos para el perfil: [nombre del perfil]?"* Click **Confirm** to proceed or **Cancel** to go back.
+  </Step>
+</Steps>
+
+## How saving works
+
+Saving calls `POST /api/permisos/guardar-matriz` with the entire matrix for the selected profile as a single payload:
+
+```json
+{
+  "idPerfil": 2,
+  "permisos": [
+    {
+      "idModulo": 1,
+      "bitConsulta": true,
+      "bitAgregar": true,
+      "bitEditar": false,
+      "bitDetalle": true,
+      "bitEliminar": false
+    }
+  ]
+}
+```
+
+The endpoint replaces the existing permission rows for that profile atomically — it does not apply a diff.
+
+If the profile being edited belongs to the currently logged-in administrator, `cargarMisPermisos` is called immediately after saving so the session reflects the new permissions without requiring a logout.
+
+## Permission gates
+
+Actions on the permissions page are gated by the `PERMISOS-PERFIL` module:
+
+| Permission flag | Controls |
+|---|---|
+| `bitConsulta` | View the matrix and access the page |
+| `bitEditar` | Enable checkboxes and show the **Guardar Permisos** button |
+
+## Permissions data model
+
+The `permisos_perfil` table stores one row per profile-module combination:
+
+| Column | Type | Required | Description |
+|---|---|---|---|
+| `id` | serial PK | Yes | Auto-increment primary key |
+| `idModulo` | integer FK | Yes | References `modulo.id` |
+| `idPerfil` | integer FK | Yes | References `perfil.id` |
+| `bitConsulta` | boolean | Yes | View permission (default `false`) |
+| `bitAgregar` | boolean | Yes | Create permission (default `false`) |
+| `bitEditar` | boolean | Yes | Edit permission (default `false`) |
+| `bitEliminar` | boolean | Yes | Delete permission (default `false`) |
+| `bitDetalle` | boolean | Yes | Detail view permission (default `false`) |
+
+<Note>
+  Permission changes take effect the next time the affected user's session loads their permissions. This happens automatically at login via `cargarMisPermisos`. If you need the changes to apply to a currently active session, the user must log out and back in — unless the edited profile belongs to you, in which case the session is refreshed immediately after saving.
+</Note>
+
+<Warning>
+  Removing `bitConsulta` from a module for a profile will immediately redirect any user with that profile who is currently on that module's page to the root `/`. The route guard checks `bitConsulta` on every page mount.
+</Warning>
+
+## Related pages
+
+<Columns cols={2}>
+  <Card title="Role-based access control" icon="lock" href="/concepts/rbac">
+    Understand how the permission flags are evaluated at runtime.
+  </Card>
+  <Card title="Module management" icon="grid" href="/features/module-management">
+    Register the modules that appear as rows in the matrix.
+  </Card>
+</Columns>

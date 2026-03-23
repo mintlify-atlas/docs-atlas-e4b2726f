@@ -1,0 +1,120 @@
+---
+title: "Environment setup"
+description: "All required environment variables for running Nuxt Secure."
+---
+
+Nuxt Secure reads configuration from a `.env` file in the project root. The values are loaded into Nuxt's `runtimeConfig` at build time.
+
+<Warning>
+  Never commit your `.env` file to version control. Add it to `.gitignore` before your first commit.
+</Warning>
+
+## Required variables
+
+<ParamField path="DATABASE_URL" type="string" required>
+  PostgreSQL connection string for your Neon (or any PostgreSQL-compatible) database.
+
+  ```
+  DATABASE_URL=postgresql://user:password@host/dbname
+  ```
+</ParamField>
+
+<ParamField path="JWT_SECRET" type="string" required>
+  Secret key used to sign and verify JSON Web Tokens. Use a random string of at least 32 characters.
+
+  ```
+  JWT_SECRET=your-super-secret-key-at-least-32-characters
+  ```
+</ParamField>
+
+<ParamField path="CLOUDINARY_CLOUD_NAME" type="string" required>
+  Your Cloudinary cloud name. Required for user profile photo uploads.
+
+  ```
+  CLOUDINARY_CLOUD_NAME=your-cloud-name
+  ```
+</ParamField>
+
+<ParamField path="CLOUDINARY_API_KEY" type="string" required>
+  Your Cloudinary API key. Required for server-side image upload signing.
+
+  ```
+  CLOUDINARY_API_KEY=your-api-key
+  ```
+</ParamField>
+
+<ParamField path="CLOUDINARY_API_SECRET" type="string" required>
+  Your Cloudinary API secret. Keep this value private — it is only used server-side.
+
+  ```
+  CLOUDINARY_API_SECRET=your-api-secret
+  ```
+</ParamField>
+
+<ParamField path="NUXT_PUBLIC_TURNSTILE_SITE_KEY" type="string" required>
+  Cloudflare Turnstile public site key. This value is exposed to the browser and rendered inside the CAPTCHA widget on the login page.
+
+  ```
+  NUXT_PUBLIC_TURNSTILE_SITE_KEY=your-site-key
+  ```
+</ParamField>
+
+<ParamField path="TURNSTILE_SECRET_KEY" type="string" required>
+  Cloudflare Turnstile secret key. Used server-side to verify CAPTCHA tokens. Keep this value private.
+
+  ```
+  TURNSTILE_SECRET_KEY=your-secret-key
+  ```
+</ParamField>
+
+## Complete `.env` example
+
+```ini .env
+DATABASE_URL=postgresql://user:password@host/dbname
+JWT_SECRET=your-super-secret-key-at-least-32-characters
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+NUXT_PUBLIC_TURNSTILE_SITE_KEY=your-site-key
+TURNSTILE_SECRET_KEY=your-secret-key
+```
+
+## Obtaining credentials
+
+### Neon database
+
+1. Go to [neon.tech](https://neon.tech) and create a free account.
+2. Create a new project and select a PostgreSQL region.
+3. From the **Connection Details** panel, copy the connection string.
+4. Paste it as your `DATABASE_URL` value.
+
+<Tip>
+  Neon's free tier includes a serverless PostgreSQL instance that works out of the box with Drizzle ORM. No additional configuration is needed.
+</Tip>
+
+### Cloudinary
+
+1. Go to [cloudinary.com](https://cloudinary.com) and create a free account.
+2. From your **Dashboard**, copy the **Cloud name**, **API key**, and **API secret**.
+3. Set each value in your `.env` file:
+   - `CLOUDINARY_CLOUD_NAME`
+   - `CLOUDINARY_API_KEY`
+   - `CLOUDINARY_API_SECRET`
+
+<Note>
+  Cloudinary's free tier provides 25 GB of storage and 25 GB of monthly bandwidth — sufficient for development and small deployments.
+</Note>
+
+### Cloudflare Turnstile
+
+1. Go to the [Cloudflare dashboard](https://dash.cloudflare.com) and log in or create an account.
+2. Navigate to **Turnstile** in the sidebar.
+3. Click **Add site** and register your domain (use `localhost` for local development).
+4. Copy the **Site key** and **Secret key**.
+5. Set each value in your `.env` file:
+   - `NUXT_PUBLIC_TURNSTILE_SITE_KEY` — the public site key
+   - `TURNSTILE_SECRET_KEY` — the private secret key
+
+<Warning>
+  Turnstile will not function correctly with placeholder or invalid keys. The login button stays disabled until the CAPTCHA challenge is completed, so the app is unusable without valid Turnstile credentials.
+</Warning>

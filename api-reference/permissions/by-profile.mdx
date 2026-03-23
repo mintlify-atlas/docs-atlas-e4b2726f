@@ -1,0 +1,111 @@
+---
+title: 'Permissions by profile'
+description: 'Retrieve all raw permission records assigned to a specific profile. Used by the UI to populate the permissions matrix editor.'
+---
+
+<Badge color="green" shape="pill">GET</Badge> `/api/permisos/por-perfil/:idPerfil`
+
+Returns every row in the `permisos_perfil` table that belongs to the given profile. Unlike the [My permissions](/api-reference/permissions/my-permissions) endpoint, this returns the raw table rows (including `id` and `idModulo`) without joining module names. It is used by the admin UI to load the current state of the permissions matrix before editing.
+
+## Path parameters
+
+<ParamField path="idPerfil" type="number" required>
+  ID of the profile whose permissions you want to retrieve.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the query completes without error.
+</ResponseField>
+
+<ResponseField name="data" type="object[]" required>
+  Array of `permisos_perfil` rows for the given profile. Returns an empty array when the profile has no assigned permissions.
+  <Expandable title="permission record properties">
+    <ResponseField name="id" type="number">
+      Primary key of the permission record.
+    </ResponseField>
+    <ResponseField name="idPerfil" type="number">
+      ID of the profile this record belongs to.
+    </ResponseField>
+    <ResponseField name="idModulo" type="number">
+      ID of the module this permission covers.
+    </ResponseField>
+    <ResponseField name="bitAgregar" type="boolean">
+      Create access flag. Defaults to `false`.
+    </ResponseField>
+    <ResponseField name="bitEditar" type="boolean">
+      Edit access flag. Defaults to `false`.
+    </ResponseField>
+    <ResponseField name="bitConsulta" type="boolean">
+      Read/list access flag. Defaults to `false`.
+    </ResponseField>
+    <ResponseField name="bitEliminar" type="boolean">
+      Delete access flag. Defaults to `false`.
+    </ResponseField>
+    <ResponseField name="bitDetalle" type="boolean">
+      Detail-view access flag. Defaults to `false`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Error response
+
+```json 500
+{
+  "statusCode": 500,
+  "message": "Error al cargar permisos"
+}
+```
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request GET \
+  --url 'https://your-domain.com/api/permisos/por-perfil/2' \
+  --cookie 'auth_token=<your-jwt>'
+```
+
+```typescript TypeScript
+const idPerfil = 2;
+
+const response = await fetch(`/api/permisos/por-perfil/${idPerfil}`, {
+  credentials: 'include',
+});
+
+const { success, data } = await response.json();
+```
+
+</CodeGroup>
+
+### Success response
+
+```json 200
+{
+  "success": true,
+  "data": [
+    {
+      "id": 7,
+      "idPerfil": 2,
+      "idModulo": 1,
+      "bitAgregar": false,
+      "bitEditar": true,
+      "bitConsulta": true,
+      "bitEliminar": false,
+      "bitDetalle": true
+    },
+    {
+      "id": 8,
+      "idPerfil": 2,
+      "idModulo": 3,
+      "bitAgregar": false,
+      "bitEditar": false,
+      "bitConsulta": true,
+      "bitEliminar": false,
+      "bitDetalle": false
+    }
+  ]
+}
+```

@@ -1,0 +1,142 @@
+---
+title: 'Create user'
+description: 'Create a new user account.'
+---
+
+<Badge color="blue" shape="pill">POST</Badge> `/api/usuario`
+
+Creates a new user record. If a Base64-encoded image is provided, it is uploaded to Cloudinary before the record is inserted. The password is hashed with bcrypt (10 salt rounds) before storage.
+
+## Request body
+
+<ParamField body="strNombreUsuario" type="string" required>
+  Username for the new account.
+</ParamField>
+
+<ParamField body="idPerfil" type="number" required>
+  Profile (role) ID. Must reference an existing record in the `perfil` table.
+</ParamField>
+
+<ParamField body="strPwd" type="string" required>
+  Plain-text password. Hashed with bcrypt before being stored — never persisted in plain text.
+</ParamField>
+
+<ParamField body="strCorreo" type="string" required>
+  Email address. Must be unique across all users.
+</ParamField>
+
+<ParamField body="strNumeroCelular" type="string">
+  Phone number. Optional — stored as `null` if omitted.
+</ParamField>
+
+<ParamField body="idEstadoUsuario" type="boolean" default="true">
+  Active status of the account. `true` = active, `false` = inactive.
+</ParamField>
+
+<ParamField body="imagenBase64" type="string">
+  Base64-encoded image string (must start with `data:image`). When provided, the image is uploaded to the `usuarios_corp` Cloudinary folder (resized to a maximum width of 1000 px, quality auto-optimized) and the resulting secure URL is stored as `imagenUrl`. Omit this field if no image is needed.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the user is created successfully.
+</ResponseField>
+
+<ResponseField name="data" type="object" required>
+  The newly created user record as returned by the database.
+  <Expandable title="properties">
+    <ResponseField name="id" type="number">
+      Auto-generated primary key.
+    </ResponseField>
+    <ResponseField name="strNombreUsuario" type="string">
+      Username.
+    </ResponseField>
+    <ResponseField name="idPerfil" type="number">
+      Profile ID.
+    </ResponseField>
+    <ResponseField name="strPwd" type="string">
+      Bcrypt hash of the password.
+    </ResponseField>
+    <ResponseField name="strCorreo" type="string">
+      Email address.
+    </ResponseField>
+    <ResponseField name="strNumeroCelular" type="string | null">
+      Phone number.
+    </ResponseField>
+    <ResponseField name="idEstadoUsuario" type="boolean">
+      Active status.
+    </ResponseField>
+    <ResponseField name="imagenUrl" type="string | null">
+      Cloudinary URL of the uploaded image, or `null` if no image was provided.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Error responses
+
+| Status | Cause |
+|--------|-------|
+| `500` | Cloudinary upload failed, the image payload is too large, or a database constraint was violated (e.g., duplicate `strCorreo`). |
+
+<Warning>
+  `strCorreo` has a unique constraint in the database. Attempting to create a user with an email that already exists will result in a `500` error from the database driver.
+</Warning>
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request POST \
+  --url https://your-domain.com/api/usuario \
+  --header 'Content-Type: application/json' \
+  --cookie 'auth_token=<your-jwt>' \
+  --data '{
+    "strNombreUsuario": "jdoe",
+    "idPerfil": 2,
+    "strPwd": "secret123",
+    "strCorreo": "jdoe@example.com",
+    "strNumeroCelular": "555-9876",
+    "idEstadoUsuario": true
+  }'
+```
+
+```typescript TypeScript
+const response = await fetch('/api/usuario', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({
+    strNombreUsuario: 'jdoe',
+    idPerfil: 2,
+    strPwd: 'secret123',
+    strCorreo: 'jdoe@example.com',
+    strNumeroCelular: '555-9876',
+    idEstadoUsuario: true,
+    // imagenBase64: 'data:image/png;base64,...', // optional
+  }),
+});
+
+const { success, data } = await response.json();
+```
+
+</CodeGroup>
+
+### Success response
+
+```json 200
+{
+  "success": true,
+  "data": {
+    "id": 12,
+    "strNombreUsuario": "jdoe",
+    "idPerfil": 2,
+    "strPwd": "$2b$10$...",
+    "strCorreo": "jdoe@example.com",
+    "strNumeroCelular": "555-9876",
+    "idEstadoUsuario": true,
+    "imagenUrl": null
+  }
+}
+```

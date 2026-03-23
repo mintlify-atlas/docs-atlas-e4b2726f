@@ -1,0 +1,121 @@
+---
+title: "Environment variables"
+description: "Complete reference for all Nuxt Secure environment variables."
+---
+
+Nuxt Secure reads configuration from environment variables at runtime. Create a `.env` file in the project root before starting the development server.
+
+<Warning>
+  Never commit your `.env` file to version control. Add `.env` to your `.gitignore`.
+</Warning>
+
+## All environment variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_URL` | Yes | PostgreSQL connection string used by Drizzle ORM and Neon. |
+| `JWT_SECRET` | Yes | Secret used to sign and verify JSON Web Tokens. Use at least 32 random characters. |
+| `CLOUDINARY_CLOUD_NAME` | No | Your Cloudinary cloud name. Required for profile photo uploads. |
+| `CLOUDINARY_API_KEY` | No | Your Cloudinary API key. Required for profile photo uploads. |
+| `CLOUDINARY_API_SECRET` | No | Your Cloudinary API secret. Required for profile photo uploads. |
+| `NUXT_PUBLIC_TURNSTILE_SITE_KEY` | No | Cloudflare Turnstile site key. Exposed to the browser. Required for the login CAPTCHA widget to render. |
+| `TURNSTILE_SECRET_KEY` | No | Cloudflare Turnstile secret key. Server-side only. Required for CAPTCHA verification on login. |
+
+## Example `.env` file
+
+```ini .env
+# Database
+DATABASE_URL=postgresql://user:password@host/dbname
+
+# Authentication
+JWT_SECRET=your-super-secret-key-at-least-32-characters-long
+
+# Cloudinary (optional — required for profile photo uploads)
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+
+# Cloudflare Turnstile (required for login CAPTCHA)
+NUXT_PUBLIC_TURNSTILE_SITE_KEY=your-site-key
+TURNSTILE_SECRET_KEY=your-secret-key
+```
+
+## How runtime config works
+
+`nuxt.config.ts` reads each variable from `process.env` and maps it into Nuxt's `runtimeConfig`:
+
+```typescript nuxt.config.ts
+runtimeConfig: {
+  jwtSecret: process.env.JWT_SECRET,
+  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
+  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
+  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
+  turnstile: {
+    secretKey: process.env.TURNSTILE_SECRET_KEY,
+  },
+  public: {
+    turnstileSiteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY,
+  },
+}
+```
+
+In server routes and API handlers, access these values via `useRuntimeConfig()`:
+
+```typescript server/api/example.ts
+export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig()
+
+  // Server-only values
+  const secret = config.jwtSecret
+  const cloudName = config.cloudinaryCloudName
+
+  // Public values (also available on the client)
+  const siteKey = config.public.turnstileSiteKey
+})
+```
+
+<Note>
+  Variables prefixed with `NUXT_PUBLIC_` are exposed to the browser. Only place non-sensitive values there. All other `runtimeConfig` keys remain server-side only.
+</Note>
+
+## Variable details
+
+<AccordionGroup>
+  <Accordion title="DATABASE_URL">
+    A full PostgreSQL connection string in the format:
+
+    ```
+    postgresql://user:password@host/dbname
+    ```
+
+    Nuxt Secure uses [Neon](https://neon.tech) serverless PostgreSQL. Copy this string from the Neon dashboard. See [Database configuration](/configuration/database) for setup instructions.
+  </Accordion>
+
+  <Accordion title="JWT_SECRET">
+    A random string used to sign JWTs issued on login. If this value changes, all existing sessions are immediately invalidated.
+
+    Generate a secure value with:
+
+    ```bash
+    openssl rand -base64 32
+    ```
+  </Accordion>
+
+  <Accordion title="CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET">
+    Credentials for the Cloudinary account used to store user profile photos. All three must be set together. If any are missing, profile photo uploads will not work, but the rest of the application will continue to function.
+
+    See [Cloudinary configuration](/configuration/cloudinary) for setup instructions.
+  </Accordion>
+
+  <Accordion title="NUXT_PUBLIC_TURNSTILE_SITE_KEY">
+    The public site key for Cloudflare Turnstile. This value is exposed to the browser and used to render the CAPTCHA widget on the login page.
+
+    See [Cloudflare Turnstile](/configuration/turnstile) for setup instructions.
+  </Accordion>
+
+  <Accordion title="TURNSTILE_SECRET_KEY">
+    The secret key for Cloudflare Turnstile. Used server-side to verify CAPTCHA tokens submitted with the login form. This value must never be exposed to the client.
+
+    See [Cloudflare Turnstile](/configuration/turnstile) for setup instructions.
+  </Accordion>
+</AccordionGroup>

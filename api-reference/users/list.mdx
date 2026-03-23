@@ -1,0 +1,125 @@
+---
+title: 'List users'
+description: 'Retrieve a paginated list of users with optional filters.'
+---
+
+<Badge color="green" shape="pill">GET</Badge> `/api/usuario`
+
+Returns a paginated list of users joined with their profile name. Results are ordered by `id` descending, with a fixed page size of **5** records.
+
+## Query parameters
+
+<ParamField query="page" type="number" default="1">
+  Page number to retrieve. Defaults to `1`.
+</ParamField>
+
+<ParamField query="search" type="string">
+  Case-insensitive substring filter applied to `strNombreUsuario`. Uses SQL `ILIKE '%value%'`.
+</ParamField>
+
+<ParamField query="idPerfil" type="number">
+  Filter results to users belonging to the given profile ID.
+</ParamField>
+
+<ParamField query="estado" type="string">
+  Filter by active status. Pass `"true"` for active users or `"false"` for inactive users. Omit to return all users regardless of status.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the query completes without error.
+</ResponseField>
+
+<ResponseField name="data" type="object[]" required>
+  Array of user objects for the requested page.
+  <Expandable title="user object properties">
+    <ResponseField name="id" type="number">
+      Primary key of the user.
+    </ResponseField>
+    <ResponseField name="strNombreUsuario" type="string">
+      Username.
+    </ResponseField>
+    <ResponseField name="strCorreo" type="string">
+      Email address.
+    </ResponseField>
+    <ResponseField name="strNumeroCelular" type="string | null">
+      Phone number. `null` if not set.
+    </ResponseField>
+    <ResponseField name="imagenUrl" type="string | null">
+      Cloudinary URL of the user's profile image. `null` if not uploaded.
+    </ResponseField>
+    <ResponseField name="idEstadoUsuario" type="boolean">
+      `true` if the user is active, `false` if inactive.
+    </ResponseField>
+    <ResponseField name="idPerfil" type="number">
+      Foreign key to the `perfil` table.
+    </ResponseField>
+    <ResponseField name="nombrePerfil" type="string | null">
+      Human-readable profile name from a LEFT JOIN on the `perfil` table. `null` if the profile record does not exist.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="totalPages" type="number" required>
+  Total number of pages available given the current filters and a page size of 5.
+</ResponseField>
+
+## Error response
+
+When an unexpected server error occurs the handler catches the exception and returns:
+
+```json 500
+{
+  "success": false,
+  "message": "Ocurrió un error al consultar los usuarios."
+}
+```
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request GET \
+  --url 'https://your-domain.com/api/usuario?page=1&search=admin&idPerfil=1&estado=true' \
+  --cookie 'auth_token=<your-jwt>'
+```
+
+```typescript TypeScript
+const params = new URLSearchParams({
+  page: '1',
+  search: 'admin',
+  idPerfil: '1',
+  estado: 'true',
+});
+
+const response = await fetch(`/api/usuario?${params}`, {
+  credentials: 'include', // sends the auth_token cookie
+});
+
+const { success, data, totalPages } = await response.json();
+```
+
+</CodeGroup>
+
+### Success response
+
+```json 200
+{
+  "success": true,
+  "data": [
+    {
+      "id": 5,
+      "strNombreUsuario": "admin",
+      "strCorreo": "admin@example.com",
+      "strNumeroCelular": "555-1234",
+      "imagenUrl": "https://res.cloudinary.com/demo/image/upload/usuarios_corp/sample.jpg",
+      "idEstadoUsuario": true,
+      "idPerfil": 1,
+      "nombrePerfil": "Administrador"
+    }
+  ],
+  "totalPages": 3
+}
+```

@@ -1,0 +1,124 @@
+---
+title: "User management"
+description: Create, edit, and manage system users in Nuxt Secure.
+---
+
+The **Directorio de Usuarios** page (`/seguridad/usuario`) is the central hub for managing all user accounts in Nuxt Secure. From here you can search, filter, create, edit, and deactivate users.
+
+## Overview
+
+The user directory displays a paginated table of all registered users. Each row shows the user's avatar, username, contact details, assigned profile, and account status.
+
+Access to this page requires the `bitConsulta` permission on the `USUARIO` module. If you lack this permission, the application redirects you to `/` before the page renders.
+
+## Filtering users
+
+Three filters are available at the top of the table. Filters apply with a 400 ms debounce — the table refreshes automatically as you type.
+
+| Filter | Description |
+|---|---|
+| **Search by name** | Case-insensitive partial match on `strNombreUsuario` |
+| **Assigned profile** | Dropdown listing all profiles; select one to narrow results |
+| **Status** | Show all users, only active users, or only inactive users |
+
+Click **Limpiar** to reset all filters and return to the full list.
+
+## Pagination
+
+The table is paginated with **5 records per page**. Use the first, previous, next, and last buttons to navigate. The current page number and total pages are shown on the left.
+
+## Creating a user
+
+Click **Nuevo Usuario** to open the creation form. This button is only visible if you have both `bitConsulta` and `bitAgregar` on the `USUARIO` module.
+
+<Steps>
+  <Step title="Fill in the required fields">
+    The following fields are required:
+    - **Username** (`strNombreUsuario`) — the display name for the user
+    - **Email** (`strCorreo`) — must be unique across all users
+    - **Password** (`strPwd`) — minimum length enforced by validation
+    - **Assigned profile** (`idPerfil`) — select from the dropdown of existing profiles
+  </Step>
+  <Step title="Optionally add contact and photo">
+    - **Phone** (`strNumeroCelular`) — up to 10 digits, optional
+    - **Profile photo** — click the avatar area or **Examinar archivos** to select an image (JPG or PNG, max 10 MB before compression). The image is compressed client-side before upload.
+  </Step>
+  <Step title="Set the account status">
+    The **Estado de la cuenta** toggle defaults to active. Switch it off to create the user in an inactive state.
+  </Step>
+  <Step title="Save the record">
+    Click **Guardar Registro**. The form validates all required fields before submitting. If any field is invalid, a summary error banner appears at the top of the form.
+  </Step>
+</Steps>
+
+<Note>
+  Passwords are hashed with **bcrypt** (10 salt rounds) before being stored in the database. Plain-text passwords are never persisted.
+</Note>
+
+## Editing a user
+
+Click the edit icon (pencil) on any row to open the edit form. This action requires `bitEditar` on the `USUARIO` module.
+
+You can change:
+- Username, email, phone, assigned profile, and account status
+- Profile photo (upload a new image to replace the existing one)
+- Password — leave the password field blank to keep the current password unchanged
+
+## User status
+
+Each user has an **active** or **inactive** status stored in `idEstadoUsuario`.
+
+- **Active** (`true`) — the user can log in normally
+- **Inactive** (`false`) — the user cannot log in; displayed with a red badge in the table
+
+Deactivating a user is the recommended approach instead of deleting them, to preserve audit history.
+
+## Profile photo
+
+Photos are uploaded to **Cloudinary** via the server-side handler (`POST /api/usuario`). Before the upload:
+
+1. The client compresses the image to 60% quality and a maximum width of 800 px using `compressorjs`.
+2. The server further limits dimensions to 1000 px and applies automatic quality optimisation via the Cloudinary transformation pipeline.
+3. The resulting CDN URL is stored in `imagenUrl` and displayed as a circular avatar in the table.
+
+Users without a photo show a generated initial avatar based on the first letter of their username.
+
+## Permission gates
+
+Each action in the user directory is independently controlled by the `USUARIO` module permissions:
+
+| Permission flag | Controls |
+|---|---|
+| `bitConsulta` | View the user table and access the page |
+| `bitAgregar` | Show the **Nuevo Usuario** button |
+| `bitEditar` | Show the edit button per row |
+| `bitEliminar` | Show the delete button per row |
+| `bitDetalle` | Show the detail view button per row |
+
+Buttons are rendered with `v-if` — users without a permission never see the corresponding control.
+
+## User data model
+
+The `usuario` table is defined in `server/database/schema.ts`:
+
+| Column | Type | Required | Description |
+|---|---|---|---|
+| `id` | serial PK | Yes | Auto-increment primary key |
+| `strNombreUsuario` | varchar(255) | Yes | Display username |
+| `idPerfil` | integer FK | Yes | References `perfil.id` |
+| `strPwd` | varchar(255) | Yes | bcrypt-hashed password |
+| `idEstadoUsuario` | boolean | Yes | `true` = active, `false` = inactive (default `true`) |
+| `strCorreo` | varchar(255) | Yes | Email address (unique) |
+| `strNumeroCelular` | varchar(20) | No | Optional phone number |
+| `imagenUrl` | varchar(500) | No | Cloudinary CDN URL for profile photo |
+
+## Related pages
+
+<Columns cols={2}>
+  <Card title="Profile management" icon="id-badge" href="/features/profile-management">
+    Create and manage the profiles that are assigned to users.
+  </Card>
+  <Card title="Permissions matrix" icon="table" href="/features/permissions-matrix">
+    Configure what each profile can do in each module.
+  </Card>
+</Columns>

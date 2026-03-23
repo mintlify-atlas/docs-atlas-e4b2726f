@@ -1,0 +1,124 @@
+---
+title: "Production deployment"
+description: "Step-by-step guide for deploying Nuxt Secure to production."
+---
+
+## Node.js server deployment
+
+<Steps>
+  <Step title="Build for production">
+    Run the build command from the project root. Nitro compiles the application and writes the output to the `.output/` directory.
+
+    ```bash
+    npm run build
+    ```
+
+    The `.output/` directory contains everything needed to run the application — no `node_modules` or source files are required on the server.
+  </Step>
+
+  <Step title="Set production environment variables">
+    Configure all required environment variables in your hosting environment. Do not copy your `.env` file to the server — set variables directly through your platform's interface or use a secrets manager.
+
+    The seven variables read by `nuxt.config.ts` `runtimeConfig` are:
+
+    | Variable | Required | Description |
+    |---|---|---|
+    | `DATABASE_URL` | Yes | Production PostgreSQL connection string. |
+    | `JWT_SECRET` | Yes | Secret for signing JWTs. Use 32+ random characters. |
+    | `CLOUDINARY_CLOUD_NAME` | No | Cloudinary cloud name for photo uploads. |
+    | `CLOUDINARY_API_KEY` | No | Cloudinary API key. |
+    | `CLOUDINARY_API_SECRET` | No | Cloudinary API secret. |
+    | `NUXT_PUBLIC_TURNSTILE_SITE_KEY` | Yes | Production Turnstile site key (browser-facing). |
+    | `TURNSTILE_SECRET_KEY` | Yes | Production Turnstile secret key (server-side). |
+
+    See [Environment variables](/configuration/environment-variables) for the complete reference.
+  </Step>
+
+  <Step title="Push database schema to production">
+    Apply the Drizzle schema to your production database. Ensure `DATABASE_URL` is pointing to your production database before running this command.
+
+    ```bash
+    npx drizzle-kit push
+    ```
+
+    This creates all tables defined in `server/database/schema.ts` if they do not already exist.
+  </Step>
+
+  <Step title="Seed initial admin user (optional)">
+    If you are setting up a fresh production database rather than migrating data from development, run the seed script to create the initial admin account.
+
+    ```bash
+    npx tsx server/database/seed.ts
+    ```
+
+    <Tip>
+      Skip this step if you are migrating existing user data from another environment. Change the default admin password immediately after the first login.
+    </Tip>
+  </Step>
+
+  <Step title="Start the server">
+    Start the production server using Node.js.
+
+    ```bash
+    node .output/server/index.mjs
+    ```
+
+    The server listens on port `3000` by default. You can change this with the `PORT` environment variable.
+  </Step>
+
+  <Step title="Use a process manager (recommended)">
+    For long-running production deployments, use PM2 to manage the process. PM2 handles automatic restarts on crash and server reboot.
+
+    ```bash
+    pm2 start .output/server/index.mjs --name nuxt-secure
+    ```
+
+    To configure PM2 to start on system boot:
+
+    ```bash
+    pm2 save && pm2 startup
+    ```
+  </Step>
+</Steps>
+
+## Vercel deployment
+
+Vercel auto-detects Nuxt.js projects and configures the build pipeline automatically.
+
+1. Install the Vercel CLI:
+
+   ```bash
+   npm i -g vercel
+   ```
+
+2. Deploy to production from the project root:
+
+   ```bash
+   vercel --prod
+   ```
+
+3. Add all environment variables in the Vercel dashboard under **Settings → Environment Variables**. Set them for the **Production** environment.
+
+<Note>
+  Vercel is the recommended platform when using Neon DB, as both are optimized for serverless connections. Neon's serverless driver handles connection pooling automatically.
+</Note>
+
+## Environment variables in production
+
+See [Environment variables](/configuration/environment-variables) for the complete variable reference.
+
+Two variables require special attention for production:
+
+- **`TURNSTILE_SECRET_KEY`** and **`NUXT_PUBLIC_TURNSTILE_SITE_KEY`** must be keys registered in the Cloudflare Turnstile dashboard with your production domain. Keys registered for `localhost` will not work in production, and test keys bypass verification entirely.
+- **`JWT_SECRET`** must be consistent across all instances if you run multiple replicas. Changing this value in production immediately invalidates all active sessions.
+
+## Security considerations
+
+- **Use a strong `JWT_SECRET`** — Generate at least 32 random characters. Use `openssl rand -base64 32` to produce a cryptographically secure value.
+- **Enable HTTPS** — Secure cookies require HTTPS. Most platforms provide TLS automatically; if self-hosting, use a reverse proxy like Nginx or Caddy with a Let's Encrypt certificate.
+- **Keep `DATABASE_URL` private** — The Neon connection string contains your database credentials. Only set it as a server-side environment variable — never expose it to the browser.
+- **Set the Turnstile domain** — In the Cloudflare Turnstile dashboard, configure the widget's allowed domains to your production URL only.
+
+<Warning>
+  Never use development or test Cloudflare Turnstile keys in production. Test keys accept all challenges without verification, leaving the login form unprotected against bots.
+</Warning>

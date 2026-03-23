@@ -1,0 +1,163 @@
+---
+title: 'List modules'
+description: 'Retrieve a paginated list of modules or a full list for dropdown population.'
+---
+
+## Paginated list
+
+<Badge color="green" shape="pill">GET</Badge> `/api/modulo`
+
+Returns a paginated list of modules. Results are ordered by `id` descending, with a fixed page size of **5** records.
+
+### Query parameters
+
+<ParamField query="page" type="number" default="1">
+  Page number to retrieve. Defaults to `1`.
+</ParamField>
+
+<ParamField query="search" type="string">
+  Case-insensitive substring filter applied to `strNombreModulo`. Uses SQL `ILIKE '%value%'`.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the query completes without error.
+</ResponseField>
+
+<ResponseField name="data" type="object[]" required>
+  Array of module objects for the requested page.
+  <Expandable title="module object properties">
+    <ResponseField name="id" type="number">
+      Primary key of the module.
+    </ResponseField>
+    <ResponseField name="strNombreModulo" type="string">
+      Module name. Always stored in uppercase.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="totalPages" type="number" required>
+  Total number of pages available given the current filters and a page size of 5.
+</ResponseField>
+
+### Error response
+
+When an unexpected server error occurs the handler catches the exception and returns:
+
+```json 500
+{
+  "success": false,
+  "message": "Ocurrió un error al consultar los módulos."
+}
+```
+
+### Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request GET \
+  --url 'https://your-domain.com/api/modulo?page=1&search=ventas' \
+  --cookie 'auth_token=<your-jwt>'
+```
+
+```typescript TypeScript
+const params = new URLSearchParams({
+  page: '1',
+  search: 'ventas',
+});
+
+const response = await fetch(`/api/modulo?${params}`, {
+  credentials: 'include',
+});
+
+const { success, data, totalPages } = await response.json();
+```
+
+</CodeGroup>
+
+#### Success response
+
+```json 200
+{
+  "success": true,
+  "data": [
+    {
+      "id": 5,
+      "strNombreModulo": "VENTAS"
+    }
+  ],
+  "totalPages": 2
+}
+```
+
+---
+
+## Simple list (for dropdowns)
+
+<Badge color="green" shape="pill">GET</Badge> `/api/modulo/list`
+
+Returns all modules without pagination. All fields (`id` and `strNombreModulo`) are included. Results are ordered by `id` ascending. Intended for populating select inputs in the UI.
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the query completes without error.
+</ResponseField>
+
+<ResponseField name="data" type="object[]" required>
+  Array of all module objects.
+  <Expandable title="module object properties">
+    <ResponseField name="id" type="number">
+      Primary key of the module.
+    </ResponseField>
+    <ResponseField name="strNombreModulo" type="string">
+      Module name.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error response
+
+When an unexpected server error occurs:
+
+```json 500
+{
+  "statusCode": 500,
+  "message": "Error al cargar módulos"
+}
+```
+
+### Examples
+
+<CodeGroup>
+
+```bash curl
+curl --request GET \
+  --url 'https://your-domain.com/api/modulo/list' \
+  --cookie 'auth_token=<your-jwt>'
+```
+
+```typescript TypeScript
+const response = await fetch('/api/modulo/list', {
+  credentials: 'include',
+});
+
+const { success, data } = await response.json();
+```
+
+</CodeGroup>
+
+#### Success response
+
+```json 200
+{
+  "success": true,
+  "data": [
+    { "id": 1, "strNombreModulo": "USUARIOS" },
+    { "id": 2, "strNombreModulo": "PERFILES" },
+    { "id": 3, "strNombreModulo": "MODULOS" }
+  ]
+}
+```

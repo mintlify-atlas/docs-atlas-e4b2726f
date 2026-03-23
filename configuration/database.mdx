@@ -113,8 +113,8 @@ export const db = drizzle(sql, { schema });
 Import `db` in any server route to run queries:
 
 ```typescript server/api/example.get.ts
-import { db } from '~/server/database';
-import { usuario } from '~/server/database/schema';
+import { db } from '~~/server/database';
+import { usuario } from '~~/server/database/schema';
 
 export default defineEventHandler(async () => {
   return await db.select().from(usuario);

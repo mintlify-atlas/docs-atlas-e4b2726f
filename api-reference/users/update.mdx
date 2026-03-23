@@ -5,7 +5,7 @@ description: "Update an existing user's information."
 
 <Badge color="yellow" shape="pill">PUT</Badge> `/api/usuario/:id`
 
-Updates the fields of an existing user. All body fields overwrite their corresponding database columns — include every field you want to retain, not only the ones that changed. If a new Base64 image is supplied it is uploaded to Cloudinary; otherwise the existing `imagenUrl` is left unchanged. A non-empty `strPwd` value is re-hashed with bcrypt before being stored.
+Updates the fields of an existing user. The core text fields (`strNombreUsuario`, `idPerfil`, `strCorreo`, `strNumeroCelular`, `idEstadoUsuario`) are always overwritten. `imagenUrl` is only updated when a new `imagenBase64` value is provided — omitting it leaves the existing photo URL unchanged. `strPwd` is only re-hashed and updated when a non-empty string is provided.
 
 ## Path parameters
 

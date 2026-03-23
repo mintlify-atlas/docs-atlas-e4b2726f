@@ -77,13 +77,10 @@ Use `tienePermiso` with `v-if` to conditionally render UI elements based on the 
 
 ```vue app/pages/seguridad/usuario.vue
 <script setup>
-const { tienePermiso, restaurarSesion } = useAuth()
+const { tienePermiso } = useAuth()
 const router = useRouter()
 
-onMounted(async () => {
-  await restaurarSesion()
-
-  // Redirect users without view permission
+onMounted(() => {
   if (!tienePermiso('USUARIO', 'bitConsulta')) {
     router.replace('/')
   }
@@ -91,23 +88,19 @@ onMounted(async () => {
 </script>
 
 <template>
-  <!-- Show the data table only if the user can view records -->
-  <DataTable v-if="tienePermiso('USUARIO', 'bitConsulta')" />
-
-  <!-- Show the create button only if the user can add records -->
-  <button v-if="tienePermiso('USUARIO', 'bitAgregar')">
+  <!-- Show the create button only if the user can view AND add records -->
+  <button v-if="tienePermiso('USUARIO', 'bitConsulta') && tienePermiso('USUARIO', 'bitAgregar')">
     New user
   </button>
 
   <!-- Show edit controls only if the user can edit -->
-  <button v-if="tienePermiso('USUARIO', 'bitEditar')">
-    Edit
-  </button>
+  <button v-if="tienePermiso('USUARIO', 'bitEditar')">Edit</button>
 
   <!-- Show delete controls only if the user can delete -->
-  <button v-if="tienePermiso('USUARIO', 'bitEliminar')">
-    Delete
-  </button>
+  <button v-if="tienePermiso('USUARIO', 'bitEliminar')">Delete</button>
+
+  <!-- Show detail controls only if the user can view details -->
+  <button v-if="tienePermiso('USUARIO', 'bitDetalle')">View</button>
 </template>
 ```
 
@@ -116,8 +109,7 @@ onMounted(async () => {
 Each security page checks `bitConsulta` in its `onMounted` hook. If the user lacks view permission, they are redirected to `/` before the page renders:
 
 ```typescript
-onMounted(async () => {
-  await restaurarSesion()
+onMounted(() => {
   if (!tienePermiso('USUARIO', 'bitConsulta')) {
     router.replace('/')
   }

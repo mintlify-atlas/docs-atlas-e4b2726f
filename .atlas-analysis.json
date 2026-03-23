@@ -1,0 +1,140 @@
+{
+  "projectType": "saas",
+  "projectName": "Nuxt Secure",
+  "projectDescription": "A responsive corporate web application built with Nuxt.js that implements JWT authentication, user management, profiles, and role-based permissions through CRUD modules for secure access administration.",
+  "theme": "linden",
+  "primaryColor": "#1E40AF",
+  "lightColor": "#DBEAFE",
+  "darkColor": "#1E3A8A",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "environment-setup"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/architecture",
+              "concepts/authentication",
+              "concepts/rbac"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/user-management",
+              "features/profile-management",
+              "features/module-management",
+              "features/permissions-matrix"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/environment-variables",
+              "configuration/database",
+              "configuration/cloudinary",
+              "configuration/turnstile"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/overview",
+              "deployment/production"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Authentication",
+            "pages": [
+              "api-reference/auth/login"
+            ]
+          },
+          {
+            "group": "Users",
+            "pages": [
+              "api-reference/users/list",
+              "api-reference/users/create",
+              "api-reference/users/update",
+              "api-reference/users/delete"
+            ]
+          },
+          {
+            "group": "Profiles",
+            "pages": [
+              "api-reference/profiles/list",
+              "api-reference/profiles/create",
+              "api-reference/profiles/update",
+              "api-reference/profiles/delete"
+            ]
+          },
+          {
+            "group": "Modules",
+            "pages": [
+              "api-reference/modules/list",
+              "api-reference/modules/create",
+              "api-reference/modules/update",
+              "api-reference/modules/delete"
+            ]
+          },
+          {
+            "group": "Permissions",
+            "pages": [
+              "api-reference/permissions/list",
+              "api-reference/permissions/by-profile",
+              "api-reference/permissions/my-permissions",
+              "api-reference/permissions/save-matrix"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "JWT-based authentication with 8-hour token expiry",
+    "Cloudflare Turnstile CAPTCHA protection on login",
+    "Role-based access control (RBAC) with granular permissions per module",
+    "User management with profile photo upload via Cloudinary",
+    "Profile management with admin flag support",
+    "Module management for dynamic application sections",
+    "Permissions matrix editor with per-profile CRUD-level access control",
+    "Global route middleware enforcing authentication on all pages",
+    "PostgreSQL database via Neon serverless with Drizzle ORM",
+    "Responsive UI built with Vue 3 and Tailwind CSS"
+  ],
+  "publicApiSurface": [
+    "POST /api/auth/login",
+    "GET /api/usuario",
+    "POST /api/usuario",
+    "PUT /api/usuario/:id",
+    "DELETE /api/usuario/:id",
+    "GET /api/perfil",
+    "POST /api/perfil",
+    "PUT /api/perfil/:id",
+    "DELETE /api/perfil/:id",
+    "GET /api/modulo",
+    "POST /api/modulo",
+    "PUT /api/modulo/:id",
+    "DELETE /api/modulo/:id",
+    "GET /api/permisos",
+    "POST /api/permisos",
+    "PUT /api/permisos/:id",
+    "DELETE /api/permisos/:id",
+    "GET /api/permisos/por-perfil/:id",
+    "GET /api/permisos/mis-permisos/:idPerfil",
+    "POST /api/permisos/guardar-matriz"
+  ]
+}
